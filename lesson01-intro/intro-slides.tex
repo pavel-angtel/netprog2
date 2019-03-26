@@ -1,0 +1,312 @@
+
+\startcomponent intro-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Так что такое сетевое устройство}
+\IncludePicture[horizontal][diagrams/concept.pdf]
+
+\SlideTitle {Сетевое устройство как встраиваемая система}
+\setuptables[align={middle,lohi}]
+\starttable[|c|cp(0.4\textwidth)|]
+\HL
+\NC Аппаратное ускорение \VL Специальные функции \AR
+\HL
+\NC Передача пакетов \NC Управление дистанционным питанием\AR
+\HL
+\NC Кодирование голоса и видео \NC Сбор данных с датчиков\AR
+\HL
+\NC Шифрование \NC Управление промышленными объектами (насосы, двигатели и др.) \AR
+\HL
+\stoptable
+
+\\
+\\
+В любом случае устройство должно быть эффективно по экономическим показателям
+(цена самого устройства, цена электричества, охлаждения и т.д.)!
+
+\SlideTitle {Аппаратная архитектура сетевого устройства}
+\IncludePicture[horizontal][diagrams/hardware-architecture.pdf]
+
+\SlideTitle {Сетевой аспект}
+\IncludePicture[horizontal][diagrams/network-interaction.pdf]
+
+\SlideTitle {Программная архитектура сетевого устройства}
+\IncludePicture[horizontal][diagrams/software-architecture.pdf]
+
+\SlideTitle {О чем курс?}
+\startitemize
+\item {\bf Не} об этом.
+
+Языки программирования, администрирование коммутаторов Cisco.
+\item Не столько об этом, но и об этом тоже.
+
+Linux, программирование на C, сетевые протоколы и технологии.
+\item Скорее об этом.
+
+Архитектура ПО сетевого устройства, разработка компонентов ПО СУ,
+взаимодействие между компонентами, автоматическое управление сетевыми
+устройствами.
+\stopitemize
+
+\SlideTitle {Командный интерпретатор ОС Linux (shell)}
+shell - интерпретатор + исполнитель скриптов.
+
+shell \textasciitilde язык программирования (работа с командами и переменными).
+
+\startitemize
+\item Вывод списка файлов в текущем каталоге (аргумент {\tt -l} запрашивает вывод метаданных).
+\starttyping
+$ ls
+$ ls -l
+\stoptyping
+\item Задание переменной {\tt var}. {\bf Важно!} Пробелов вокруг {\tt =} быть не должно.
+\starttyping
+$ var=123
+\stoptyping
+\item Вывод значения переменной {\tt PATH} с помощью команды {\tt echo}.
+\starttyping
+$ echo $PATH
+\stoptyping
+\item Вывод справки по команде {\tt ls}.
+\starttyping
+$ man ls
+\stoptyping
+\stopitemize
+
+\SlideTitle {Дерево файлов в ОС Linux}
+
+\startitemize
+\item Пример абсолютного пути (начинается с /).
+
+/home/student/file1.txt
+\item Пример относительного пути (. - текущий каталог).
+
+./file1.txt
+\item Команда вывода текущего каталога.
+\starttyping
+$ pwd
+\stoptyping
+\item Команда смены текущего каталога.
+\starttyping
+$ cd /home/student/newdir
+\stoptyping
+\item Команды создание и удаление файла file2 в текущем каталоге.
+\starttyping
+$ touch file2
+$ rm file2
+\stoptyping
+\stopitemize
+
+\SlideTitle {Синтаксис команды}
+
+{\color[darkgreen] {Локальная установка переменной (только для данной команды)}}
+
+{\color[red] {Путь к команде (относительный путь ищется в каталогах \$PATH)}}
+
+{\color[darkblue] {Аргументы команды (передаются в виде массива строк в приложение)}}
+
+{\color[darkyellow] {Собственный синтаксис shell}}
+
+\\
+
+\startitemize
+\item Запуск программы {\tt myprogram} с заданием переменной окружения VAR, заданием
+именованных аргументов {\tt a} и {\tt b} и заданием одного позиционного
+аргумента со значением {\tt posargument}.
+
+{\tt {\color[darkgreen] {VAR=123}} {\color[red] {myprogram}} {\color[darkblue] {-a 1 -b 2 posargument}}}
+
+\item Проверка существования файла {\tt file1} и его вывод в случае успеха.
+
+{\tt {\color[darkyellow] {if}} {\color[red] {[}} {\color[darkblue] {-f file1 ]}}{\color[darkyellow]{; then} {\color[red] {cat}} {\color[darkblue] {file1}} {\color[darkyellow]{; fi}}}}
+
+\item Как узнать, где находится команда {\tt myprogram}.
+
+\starttyping
+$ which myprogram
+\stoptyping
+\stopitemize
+
+\SlideTitle {Сборка приложения с помощью GCC}
+\startitemize
+\item Простейшая команда сборки приложения hello из исходного файла hello.c.
+Заголовочные файлы автоматически ищутся в /usr/include, библиотеки
+автоматически ищутся в /usr/lib.
+\starttyping
+$ gcc -o hello hello.c
+\stoptyping
+\item Сборка с подключением библиотеки libreadline и дополнительными каталогами
+поиска заголовочных файлов и библиотек.
+\starttyping
+$ gcc -o hello -I./myheaders -L./mylibs -lreadline hello.c
+\stoptyping
+\item Поэтапная сборка. Сначала исходный файл компилируется в объектный. Потом
+объектный файл компонуется в приложение.
+\starttyping
+$ gcc -o hello.o -c hello.c
+$ gcc -o hello hello.o
+\stoptyping
+\stopitemize
+
+\SlideTitle {Этапы сборки}
+\IncludePicture[horizontal][diagrams/build-stages.pdf]
+
+\SlideTitle {Системы сборки}
+
+Системы сборки: make, automake, cmake.
+
+Зачем они нужны?
+\startitemize
+\item Пересборка только для изменившихся файлов.
+\item Конфигурирование сборки (включение/выключение частей приложения и др.).
+\item Формирование списка аргументов gcc.
+\stopitemize
+
+Сборка цели hello с помощью системы сборки make:
+\starttyping
+$ make hello
+\stoptyping
+
+Удаление всех сгенерированных файлов (цель clean):
+\starttyping
+$ make clean
+\stoptyping
+
+\SlideTitle {Синтаксис Makefile}
+
+{\color[darkgreen] {Цели}}
+
+{\color[red] {Зависимости}}
+
+{\color[darkblue] {Генератор цели}}
+
+{\color[darkyellow] {Прочий синтаксис Makefile}}
+
+\\
+
+{\tt {\color[darkyellow] {CFLAGS = -O2}}}
+
+{\tt {\color[darkgreen] {hello:}} {\color[red] {hello.o}}}
+
+\type{        }{\tt {\color[darkblue] {gcc -o \$@ \$<}}}
+
+{\tt {\color[darkgreen] {hello.o:}} {\color[red] {hello.c}}}
+
+\type{        }{\tt {\color[darkblue] {gcc \$(CFLAGS) -c -o \$@ \$<}}}
+
+\\
+
+@ - текущая цель.
+
+< - первая зависимость текущей цели.
+
+\SlideTitle {Кросс-компиляция (проблемы)}
+
+\startitemize
+\item Другой набор процессорных инструкций.
+\item Другие заголовочные файлы (из-за отличного набора библиотек, из-за
+отличий в версиях ядра и библиотек).
+\item Другие библиотеки.
+\item Исполняемый файл запускается не на компьютере, а на встроенной системе.
+\stopitemize
+
+\SlideTitle {Кросс-компиляция (решение)}
+
+\startitemize
+\item Для сборки используется кросс-компилятор mipsel-oe-linux-musl-gcc (и
+другие утилиты с таким же префиксом). Компилятор находится в
+/usr/angtel-sdk/sysroots/x86_64-oesdk-linux/usr/bin/mipsel-oe-linux-musl/.
+\item Системные библиотеки и заголовочные файлы {\bf не} используются.
+\item Библиотеки и заголовочные файлы подключаются из
+/usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl/usr/lib и
+/usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl/usr/include, соответственно.
+Для этого у компилятора GCC настраивается \quote{виртуальный корень} (sysroot)
+со значением /usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl.
+\item В Makefile добавляется цель install, которая записывает исполняемый файл
+на плату по протоколу FTP.
+\stopitemize
+
+\SlideTitle {Подключение коммутатора \quote{Корунд}}
+\IncludePicture[horizontal][diagrams/corundum.pdf]
+
+\SlideTitle {Работа с FTP-клиентом}
+\startitemize
+\item Подключение к устройству:
+\starttyping
+$ ftp 192.168.0.8
+\stoptyping
+\item имя пользователя - root, пароль - пустая строка.
+\item Загрузка файла file1 на плату:
+\starttyping
+ftp> put file1
+\stoptyping
+\item Скачивание файла file2 с платы:
+\starttyping
+ftp> get file2
+\stoptyping
+\item Завершение FTP-сессии:
+\starttyping
+ftp> quit
+\stoptyping
+\stopitemize
+
+\SlideTitle {Работа с Telnet-клиентом}
+\startitemize
+\item Подключение к устройству:
+\starttyping
+$ telnet 192.168.0.8
+\stoptyping
+\item Вывод информации о системе:
+\starttyping
+# uname -a
+\stoptyping
+\item Разрешение исполнения файла file1:
+\starttyping
+# chmod +x file1
+\stoptyping
+\item Запуск приложения file1:
+\starttyping
+# ./file1
+\stoptyping
+\item Завершение сессии:
+\starttyping
+# exit
+\stoptyping
+\stopitemize
+
+\SlideTitle {С-строки}
+
+\startitemize
+\item Представление строки \quote{text} в языке C: ['t', 'e', 'x', 't', '\textbackslash0'].
+\item Длина строки {\tt str} (без нулевого байта): \type{strlen(str)}.
+\item Сравнение строк {\tt s1} и {\tt s2} (результат 0, если равны): \type{strcmp(s1, s2)}.
+\item Вывод форматированной строки в буфер {\tt buf} размера {\tt size}:
+
+\type{snprinf(buf, size, fmt, ...)}.
+\item Преобразование строки {\tt str} в число: \type{atoi(str)}.
+\stopitemize
+
+\SlideTitle {Динамическое выделение памяти}
+\IncludePicture[horizontal][diagrams/memory-allocation.pdf]
+
+\SlideTitle {Задание}
+
+Как должна выглядеть рабочая программа:
+\starttyping
+# ./prog
+2 + 5 -    3
+Result: 4
+#
+\stoptyping
+
+Чтение строки из потока ввода выполняется с помощью функции {\tt getline}. Если
+строка еще не введена, {\tt getline будет ожидать ввода. После завершения
+вызова возвращается строка в динамически выделенном буфере.
+\stopcomponent
