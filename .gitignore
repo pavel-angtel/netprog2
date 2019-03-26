@@ -1,0 +1,8 @@
+
+*.swp
+*.aux
+*.log
+*.tuc
+*.bbl
+*.blg
+*.vimout

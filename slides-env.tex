@@ -1,0 +1,35 @@
+
+\startenvironment slides-env
+
+\usemodule[simpleslides]
+          [style=HorizontalStripes,color=blue,size=13pt]
+\usemodule[vim]
+\mainlanguage[russian]
+\setuplanguage[russian][date={dd,.,mm,.,yy}]
+\setupbodyfont[dejavu]
+
+\setuptyping[typing][bodyfont=small]
+
+%\definevimtyping[python][syntax=python,style=\small\tt,before={\switchtobodyfont[5pt]}]
+\definevimtyping[python][syntax=python,style=\ttx]
+\definevimtyping[xml][syntax=xml,style=\ttx]
+
+\definetextbackground[verbatim]
+[background=color,
+backgroundcolor=gray,
+backgroundoffset=0cm,
+location=paragraph,
+frame=off,
+topoffset=0.3cm,
+leftoffset=0.3cm]
+
+\definetyping[cli][margin=no,
+before={\starttextbackground[verbatim]},
+after={\stoptextbackground},
+indentnext=no,
+space=off,
+evenmargin=0cm,
+oddmargin=0cm,
+bodyfont=small]
+
+\stopenvironment

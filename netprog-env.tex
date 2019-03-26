@@ -1,0 +1,273 @@
+
+\startenvironment netprog-env
+
+\definepapersize
+  [mine]
+  [width=20cm,
+   height=28cm]
+
+\setuppapersize
+  [A4]
+  [A4]
+
+\setuplayout
+  [topspace=1cm,
+   backspace=2.5cm,
+   cutspace=2.5cm,
+   leftmargin=1cm,
+   leftmargindistance=.75cm,
+   rightmargin=1cm,
+   rightmargindistance=.75cm,
+   header=1cm,
+   headerdistance=1cm,
+   footer=1cm,
+   footerdistance=1cm,
+   width=middle,
+   height=middle,
+   marking=on,
+   location=middle]
+
+\setupmakeup[standard][page=yes,doublesided=no]
+
+\setuppagenumbering
+  [alternative=doublesided]
+
+\setupbodyfont[dejavu,10pt]
+\mainlanguage[russian]
+
+\setupindenting
+  [yes,medium,first]
+
+\setuptyping
+  [margin=standard,
+   blank=halfline]
+
+\definecolor[darkred]    [r=.625]
+\definecolor[darkyellow] [r=.625,g=.625] % not: [y=.625]
+\definecolor[darkgray]   [s=.625]
+\definecolor[lightgray]  [s=.875]
+
+\definecolor[metafun]    [darkred]
+
+\setupinteraction % otherwise funny page dimensions due to
+  [state=start,   % grouping half way the file in demo text
+   style=,
+   color=,
+   contrastcolor=]
+
+\setuptolerance
+  [verytolerant]
+
+\definestartstop
+  [intro]
+  [style=slanted,
+   after=\blank]
+
+\setupquote
+  [before=\blank\startnarrower,
+   after=\stopnarrower\blank]
+
+\setuplist
+  [chapter]
+  [after={\blank[line]}]
+
+\setupcombinedlist
+  [content]
+  [aligntitle=yes,
+   alternative=c,
+   interaction=all]
+
+\setuptabulate
+  [rulecolor=darkyellow,
+   rulethickness=1pt]
+
+
+\def\OnGrid#1%
+  {\hbox to\hsize
+     {\ifodd\realpageno\hss\fi
+      \setbox0=\hbox{\color[darkred]{#1}}%
+      \dimen0=\wd0
+      \ifdim\dimen0>0pt
+        \advance\dimen0 by .125cm
+        \dimen2=.25cm
+        \divide\dimen0 by \dimen2
+        \multiply\dimen0 by \dimen2
+        \advance\dimen0 by .5cm
+      \else
+        \dimen0=2cm
+      \fi
+      \dp0=.25cm
+      \ht0=.50cm
+      \framed
+        [background=small grid,frame=off,offset=overlay]
+        {\hbox to \dimen0{\hss\box0\hss}}%
+      \ifodd\realpageno\else\hss\fi}}
+
+\def\Circled#1%
+  {\framed
+     [background=circled,frame=off,offset=overlay]
+     {\color[darkred]{#1}}}
+
+%\definecolor[angtelcol][r=.071,g=.214,b=.114]
+\definecolor[angtelcol][darkcyan]
+
+\startuseMPgraphic{header line}
+  width := \the\hsize;
+  drawoptions(withpen pencircle scaled 0.5mm withcolor \MPcolor{angtelcol});
+  draw (0,0) -- (width,0);
+\stopuseMPgraphic
+
+\startuseMPgraphic{title line}
+  width := \the\hsize;
+  drawoptions(withpen pensquare scaled 1.2mm withcolor \MPcolor{angtelcol});
+  draw (0,0) -- (width,0);
+\stopuseMPgraphic
+
+\startuseMPgraphic{contents line}
+  width := \the\hsize;
+  drawoptions(withpen pensquare scaled 2mm withcolor \MPcolor{angtelcol});
+  draw (0,0) -- (width,0);
+\stopuseMPgraphic
+
+\setuppagenumbering[location=]
+\setupheadertexts[chapter][pagenumber]
+\setupheader[text][after=\useMPgraphic{header line},style=\tfx\bf\ss]
+
+\setupfootertexts
+  [{\copyright 2015 Ангстрем-Телеком}][Описание CLI-интерфейса]
+\setupfooter[text][style=\tfx\ss]
+
+\define[2]\ChapterCommand%
+  {\setbox0=\hbox to \leftmarginwidth{#1\hss}%
+   \hskip-\leftmarginwidth
+   \hskip-\leftmargindistance
+   \framed
+     [frame=off,offset=0pt]
+     {\box0
+      \hskip\leftmargindistance
+      #2}}
+
+\define[2]\TitleCommand%
+  {\framed
+     [frame=off,offset=0pt]
+     {#2}}
+
+\define[2]\IntroTitleCommand%
+  {\framed
+     [frame=off,offset=0pt,width=\textwidth]
+     {\hfill#2}}
+
+\def\ExtroTitleCommand#1#2%
+  {\framed
+     [frame=off,offset=0pt,width=\textwidth]
+     {\hss#2\hss}}
+
+\definehead[CmdSection][section]
+\definehead[CmdSubsubject][subsubject]
+
+\setuphead
+  [chapter,section,subsection]
+  [style=\ss\bf,indentnext=yes]
+
+\setuphead
+  [title,subject,sububject]
+  [command=\TitleCommand,
+   style=\ss\bf]
+
+\setuphead
+  [CmdSection]
+  [style=\ss\bf,indentnext=no]
+
+\setuphead
+  [CmdSubsubject]
+  [style=\ss\bf,indentnext=no]
+
+\definehead [introsubject] [subsubject]
+\definehead [extrosubject] [subsubject]
+
+\setuphead [introsubject] [command=\IntroTitleCommand]
+\setuphead [extrosubject] [command=\ExtroTitleCommand]
+
+\setuphead
+  [subsection,subsubject]
+  [before=\blank,after=\blank]
+
+\hyphenation{tool-kit}
+
+\def\Literature#1#2#3%
+  {\noindentation#1\space{\bf#2}\space#3\par}
+
+\defineframedtext
+  [framedcode]
+  [strut=yes,
+   width=\textwidth,
+   offset=2mm,
+   align=right]
+
+\definetyping[Cmds][escape={[[,]]}]
+
+\definetyping[FramedCmds][escape={[[,]]},
+                          before={\startframedcode},
+                          after={\stopframedcode}]
+
+\definedescription[CmdArgInfo][
+  headstyle=\CmdHl, style=normal, align=flushleft, location=hanging, 
+  width=broad, margin=2cm, alternative=hanging]
+
+\definedescription[CmdSynt][
+  headstyle=\CmdHl, style=\ArgHl, align=flushleft,
+  width=fit, margin=0cm, distance=1em, alternative=left]
+
+\definedescription[simpledesc][
+  headstyle=bold, style=normal, align=left, location=hanging,
+  width=broad, margin=1cm]
+
+\setupurl[color=blue]
+
+\setupbibtex[database=cli.bib]
+
+\def\FormatCmdCommon#1[#2]#3[#4]{%
+  \CmdSection {#2}
+  \getparameters[ciargs][#4]
+  \doifdefined{ciargssynt}{%
+    \CmdSubsubject {Синтаксис}
+    \getbuffer[\ciargssynt]
+  }%
+
+
+  \doifdefined{ciargsdesc}{%
+    \CmdSubsubject {Описание}
+    \getbuffer[\ciargsdesc]
+  }%
+}
+
+\def\FormatCmdInfo#1[#2]#3[#4]{%
+  \FormatCmdCommon#1[#2]#3[#4]
+
+  \let\ciargssynt\undefined
+  \let\ciargsdesc\undefined
+  \let\ciargsargs\undefined
+  \let\ciargsdefs\undefined
+  \let\ciargsparams\undefined
+  \getparameters[ciargs][#4]
+  \doifdefined{ciargsargs}{%
+    \CmdSubsubject {Аргументы}
+    \getbuffer[\ciargsargs]
+  }%
+
+  \doifdefined{ciargsdefs}{%
+    \CmdSubsubject {Значения по умолчанию}
+    \getbuffer[\ciargsdefs]
+  }%
+
+  \doifdefined{ciargsparams}{%
+    \CmdSubsubject {Параметры}
+    \getbuffer[\ciargsparams]
+  }%
+}
+
+\definehighlight[CmdHl][style=\bf\tt]
+\definehighlight[ArgHl][style=\tf\tt]
+
+\setuppublications[numbering=yes]
+\stopenvironment
