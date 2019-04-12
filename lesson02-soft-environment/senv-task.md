@@ -49,15 +49,15 @@
 
 3. Отобразить полученные значения статусных параметров в эмуляторе терминала.
 
-[1]: http://man7.org/linux/man-pages/man3/getopt.3.html
+[1]: https://www.opennet.ru/man.shtml?topic=getopt&category=3&russian=0
 
-[2]: http://man7.org/linux/man-pages/man3/fopen.3.html
-[3]: http://man7.org/linux/man-pages/man3/fread.3.html
-[4]: http://man7.org/linux/man-pages/man3/fclose.3.html
+[2]: https://www.opennet.ru/man.shtml?topic=fopen&category=3&russian=0
+[3]: https://www.opennet.ru/man.shtml?topic=fread&category=3&russian=0
+[4]: https://www.opennet.ru/cgi-bin/opennet/man.cgi?topic=fclose&category=3
 
-[5]: http://man7.org/linux/man-pages/man2/open.2.html
-[6]: http://man7.org/linux/man-pages/man2/read.2.html
-[7]: http://man7.org/linux/man-pages/man2/close.2.html
+[5]: https://www.opennet.ru/man.shtml?topic=open&category=2
+[6]: https://www.opennet.ru/man.shtml?topic=read&category=2&russian=0
+[7]: https://www.opennet.ru/man.shtml?topic=close&category=2&russian=0
 
 ## Примеры для базовой задачи
 
@@ -258,7 +258,7 @@
    Для выполнения соответствующих команд из из приложения требуется
    использовать функцию [system(3)][8].
 
-[8]: http://man7.org/linux/man-pages/man3/system.3.html
+[8]: https://www.opennet.ru/man.shtml?topic=system&category=3&russian=0
 
 ## Примеры для усложненной задачи
 
@@ -279,7 +279,7 @@
 Также потребуется использование программы [ping(8)][9]. Конфигурирование
 осуществлять для интерфейса **br0**.
 
-[9]: http://man7.org/linux/man-pages/man8/ping.8.html
+[9]: https://www.opennet.ru/man.shtml?topic=ping&category=8&russian=0
 
 1. Изменение MAC-адреса сетевого интерфейса.
    - Запустите программу **Wireshark**.
