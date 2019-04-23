@@ -197,7 +197,7 @@ $ ./lab_04_server -f
                      0,
                      (const struct sockaddr *) &server_address,
                      sizeof(struct sockaddr_un);
-    if (n_write != tx_size) {
+    if (n_write == -1) {
             /* Handle error here. */
     }
     ```
