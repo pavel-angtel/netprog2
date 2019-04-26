@@ -73,15 +73,20 @@ $ for i in $(seq 472 479); do echo $i > /sys/class/gpio/export; done
    - Задержать выполнение цикла на 100 мс.
 
    Для открытия файла используется функция [open(2)][1]. Для чтения и записи
-   функции [read(2)][2] и [write(2)][3], соответственно. Чтобы задержать
-   выполнение цикла использовать функцию [usleep(3)][4]. Имена путей для записи
-   значений сигналов GPIO генерируются с помощью функции [snprintf(3)][5].
+   функции [read(2)][2] и [write(2)][3], соответственно. Необходимо отметить,
+   что если для чтения и записи используется одно и то же файловое открытие, то
+   после каждой операции чтения/записи необходимо устанавливать файловое
+   смещение в **0**. Для изменения текущего файлового смещения необходимо
+   использовать функцию [lseek(2)][4]. Чтобы задержать выполнение цикла
+   использовать функцию [usleep(3)][5]. Имена путей для записи значений
+   сигналов GPIO генерируются с помощью функции [snprintf(3)][6].
 
 [1]: https://www.opennet.ru/man.shtml?topic=open&category=2
 [2]: https://www.opennet.ru/man.shtml?topic=read&category=2&russian=0
 [3]: https://www.opennet.ru/man.shtml?topic=write&category=2
-[4]: https://www.opennet.ru/man.shtml?topic=usleep&category=3&russian=0
-[5]: https://www.opennet.ru/man.shtml?topic=snprintf&category=3&russian=2
+[4]: https://www.opennet.ru/man.shtml?topic=lseek&category=2&russian=0
+[5]: https://www.opennet.ru/man.shtml?topic=usleep&category=3&russian=0
+[6]: https://www.opennet.ru/man.shtml?topic=snprintf&category=3&russian=2
 
 ## Примеры для базовой задачи
 
@@ -99,6 +104,26 @@ $ for i in $(seq 472 479); do echo $i > /sys/class/gpio/export; done
 
 5. Запись в файл с помощью файлового дескриптора.  
    См. Лабораторная работа №2, пример №8.
+
+6. Установка файлового смещения в `0`.
+    ```c
+    #include <unistd.h>
+
+    int fd;
+    off_t r_offset;
+
+    r_offset = lseek(fd, 0, SEEK_SET);
+    if (r_offset == (off_t) -1) {
+            /* Handle error here. */
+    }
+    ```
+
+7. Организация задержки в 100 мс.
+    ```c
+    #include <unistd.h>
+
+    usleep(100000);
+    ```
 
 ## Наблюдение результатов
 
