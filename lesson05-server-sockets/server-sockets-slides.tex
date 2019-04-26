@@ -1,0 +1,116 @@
+
+\startcomponent server-sockets-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Сервер на основе пакетного сокета}
+\IncludePicture[horizontal][diagrams/dgram-server.pdf]
+
+\SlideTitle {Привязка сокета к адресу}
+\startitemize
+\item Пример:
+\starttyping
+	struct sockaddr_un addr;
+	addr.sun_family = AF_UNIX;
+	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", "/tmp/sock_dgram_server");
+
+	bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
+\stoptyping
+\item Для каждого семейства адресов своя структура, описывающая адрес ({\tt
+sockaddr_un}, {\tt sockaddr_in}). При передаче в качестве аргумента {\tt bind},
+адрес приводится к абстрактному типу {\tt sockaddr}.
+\item {\tt bind} для Unix-сокета создает файл особого типа с указанным именем.
+\item Файл не хранит данные!
+\item Файл остается после закрытия сокета. Перед повторным вызовом {\tt bind}
+его необходимо удалить.
+\stopitemize
+
+\SlideTitle {Обработка запросов на сервере}
+\startitemize
+\item У клиента обычно нет публичного адреса.
+\item Сервер отправляет ответ на тот адрес, с которого пришел запрос.
+\item Пример:
+\starttyping
+	struct sockaddr_un addr;
+	socklen_t addrlen = sizeof(addr);
+
+	recvfrom(sock_fd, rx_buf, rx_len, (struct sockaddr *)&addr, &addrlen);
+
+	sendto(sock_fd, tx_buf, tx_len, (struct sockaddr *)&addr, addrlen);
+\stoptyping
+\item {\tt addrlen} должен быть инициализирован до вызова {\tt recvfrom}. Он
+указывает размер буфера для хранения адреса. После вызова он указывает реальный
+размер адреса.
+\stopitemize
+
+\SlideTitle {Отличия потокового сервера от пакетного}
+\startitemize
+\item Потоковый сокет требует установки соединения. Что дает соединение:
+\startitemize
+\item Сохранение порядка передачи данных за счет нумерации байтов потока.
+\item Надежная доставка за счет повторной отправки неподтвержденных сегментов.
+\item Детектирование разрыва соединения.
+\stopitemize
+\item Для AF_INET соединение устанавливается с помощью протоколу TCP, для
+AF_UNIX - средствами ядра Linux.
+\item Соединение устанавливается между 2 приложениями.
+\item Проблема: Каждый сокет может принадлежать 1 соединению, но серверу
+необходимо обслуживать несколько клиентов (несколько соединений).
+\stopitemize
+
+\SlideTitle {Слушающий сокет}
+\starttyping
+       int listen(int sockfd, int backlog);
+\stoptyping
+\startitemize
+\item Слушающий сокет отвечает только за прием соединений от клиентов.
+\item Функция {\tt listen} переводит сокет, созданный с помощью {\tt socket}, в
+слушающий режим.
+\item Слушающий сокет необходимо привязывать к публичному адресу.
+\item Аргумент {\tt backlog} задает максимальное количество соединений, ждущих
+приема. При превышения этого количества запрос на соединение отклоняется.
+\item Прием соединения и извлечение его из очереди {\tt backlog} осуществляется
+функцией {\tt accept}.
+\stopitemize
+
+\SlideTitle {Передающий сокет}
+\starttyping
+       int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+\stoptyping
+\startitemize
+\item Функция {\tt accept} возвращает дескриптор передающего сокета.
+\item Передача данных по каждому из установленных соединений производится через
+передающие сокеты. 1 передающий сокет = 1 соединение.
+\item В приложении может существовать несколько передающих сокетов, созданных
+из одного слушающего сокета.
+\item {\tt accept} - блокирующая функция, которая возвращается только после
+приема нового соединения.
+\item Передающий сокет уже привязан (вызывать {\tt bind} не нужно).
+\item Передача и прием производятся функциями {\tt send} и {\tt recv}.
+\item Когда клиент разрывает соединение, {\tt recv} на передающем сокете
+сервера возвращает 0.
+\stopitemize
+
+\SlideTitle {Сервер на основе потокового сокета}
+\IncludePicture[horizontal][diagrams/stream-server.pdf]
+
+\SlideTitle {Алгоритм сервера с одним передающим потоком}
+\IncludePicture[horizontal][diagrams/stream-server-algorithm.pdf]
+
+\SlideTitle {Упражнения}
+\startitemize
+\item Разработать сервер на основе пакетного Unix-сокета, который принимает
+запросы на адресе /tmp/sock_dgram_server, и для каждого запроса выводит
+сообщение в терминал. Анализировать запросы и отправлять ответы не требуется.
+\item Разработать сервер на основе потокового Unix-сокета, который принимает
+соединения на адресе /tmp/sock_stream_server, и для каждого соединения выводит
+сообщение в терминал. Соединение следует сразу же закрывать.
+\stopitemize
+
+\stopcomponent
