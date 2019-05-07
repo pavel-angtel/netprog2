@@ -1,0 +1,233 @@
+
+\startcomponent server-sockets-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Web-сервер с поддержкой нескольких соединений}
+\IncludePicture[horizontal][diagrams/web-server.pdf]
+
+\SlideTitle {Обработка одного запроса}
+\IncludePicture[horizontal][diagrams/request.pdf]
+
+\SlideTitle {Решение на основе параллельной обработки запросов}
+\externalfigure[diagrams/parallel-solution.pdf][width=\textwidth]
+ 
+\startitemize
+\item Потоки - процессы с общим адресным пространством (общими данными).
+\item Создание с помощью {\tt pthread_create} (обертка вокруг {\tt fork}).
+\item Преимущество - использование нескольких ядер.
+\item На одном ядре потоки исполняются поочередно.
+\stopitemize
+
+\SlideTitle {Недостатки}
+\startitemize
+\item Возможный конфликт при доступе к общим данным:
+
+\starttabulate[|lT|lT|lT|]
+\NC Поток 1 \NC Поток 2 \NC Результат \NR
+\NC array[0] = 'a'; \NC \NC {'a', '-'} \NR
+\NC \NC array[0] = 'b'; \NC {'b', '-'} \NR
+\NC \NC array[1] = 'b'; \NC {'b', 'b'} \NR
+\NC array[1] = 'a'; \NC \NC {'b', 'a'}  - недопустимая комбинация\NR
+\stoptabulate
+\item Необходима защита данных с помощью семафоров или мьютексов:
+\starttyping
+semaphore_down();
+array[0] = 'a'; array[1] = 'a';
+semaphore_up();
+\stoptyping
+\item Многопоточные приложения тяжело разрабатывать и отлаживать.
+\item Если большую часть времени поток проводит в ожидании, нет выигрыша от
+использования нескольких ядер.
+\stopitemize
+
+\SlideTitle {Решение на основе одновременной (concurrent) обработки запросов}
+\IncludePicture[horizontal][diagrams/concurrent-solution.pdf]
+ 
+\SlideTitle {Системный вызов {\tt select}}
+\starttyping
+int select(int nfds, fd_set *readfds, fd_set *, fd_set *, struct timeval *timeout);
+\stoptyping
+\startitemize
+\item {\tt select} выполняет подписку на события и ожидание.
+\item {\tt readfds} - множество файловых дескрипторов (от файлов, сокетов и др.).
+\item {\tt select} спит до тех пор, пока хотя бы один из дескрипторов не будет
+\emph{готов к чтению}. Готовность к чтению означает, что последующий {\tt read}
+(или {\tt recv}) вернет данные без ожидания.
+\item После возвращения из {\tt select} множество {\tt readfds} содержит только
+те дескрипторы, которые готовы к чтению. Код возврата - общее количество
+дескрипторов, готовых к чтению.
+\item Аргумент {\tt timeout} задает максимальное время ожидания готовности.
+Если это время истекает, {\tt select} возвращает 0.
+\item Если {\tt timeout} установлен в {\tt NULL}, {\tt select} ждет готовности
+неограниченное время.
+\stopitemize
+
+\SlideTitle {Работа с множеством файловых дескрипторов {\tt fd_set}}
+\startitemize
+\item {\tt fd_set} - битовая маска.
+\item Задание множества:
+\starttabulate[|lT|lT|]
+\NC fd_set fds; \NC \NR
+\NC int fd1 = 2, fd2 = 5; \NC \NR
+\NC FD_ZERO(&fds); \NC $...00000000_2$ \NR
+\NC FD_SET(fd1, &fds); \NC $...00000100_2$ \NR
+\NC FD_SET(fd2, &fds); \NC $...00100100_2$ \NR
+\stoptabulate
+\item Проверка принадлежности множеству:
+\starttyping
+int fd1 = 2;
+if (FD_ISSET(fd1, &fds)) {
+	/* Если принадлежит. */
+} else {
+	/* Если не принадлежит. */
+}
+\stoptyping
+\item Аргумент {\tt nfds} должен быть равен {\tt (max(fd1, fd2, ..., fdn) + 1)}.
+\stopitemize
+
+\SlideTitle {Работа со структурой {\tt struct timeval}}
+\startitemize
+\item Определение
+\starttyping
+struct timeval {
+	time_t      tv_sec;     /* seconds */
+	suseconds_t tv_usec;    /* microseconds */
+};
+\stoptyping
+\item Получение текущего времени:
+\starttyping
+struct timeval tv;
+gettimeofday(&tv, NULL);
+\stoptyping
+
+\item Арифметика:
+\starttyping
+struct timeval tv1, tv2, newtv;
+timeradd(&tv1, &tv2, &newtv); /* newtv = tv1 + tv2 */
+timersub(&tv1, &tv2, &newtv); /* newtv = tv1 - tv2 */
+if (timercmp(&tv1, &tv2, <) {
+	/* tv1 < tv2 */
+} else {
+	/* tv1 >= tv2 */
+}
+\stoptyping
+\stopitemize
+
+\SlideTitle {Простой цикл обработки событий (event loop)}
+\starttyping
+int listen_fd, sock_fd;
+int max_fd, ret;
+listen_fd = socket(...);
+sock_fd = accept(listen_fd,...);
+
+while (1) {
+	struct fd_set fds;
+	struct timeval timeout = {.tv_sec = 1};
+
+	FD_ZERO(&fds);
+	FD_SET(listen_fd, &fds);
+	FD_SET(sock_fd, &fds);
+	max_fd = listen_fd > sock_fd ? listen_fd : sock_fd;
+	ret = select(max_fd + 1, &fds, NULL, NULL, &timeout);
+	if (ret == 0) {
+		/* Обработка таймаута. */
+	} else if (FD_ISSET(listen_fd, &fds)) {
+		/* Прием нового соединения. */
+	} else if (FD_ISSET(sock_fd, &fds)) {
+		/* Обработка запроса. */
+	}
+}
+\stoptyping
+
+\SlideTitle {Обобщенный цикл обработки событий (event loop)}
+\starttyping
+while (1) {
+	struct fd_set fds;
+	struct timeval timeout;
+
+	FD_ZERO(&fds);
+	for (...) { /* Перебор всех сокетов */
+		FD_SET(sock_fd, &fds);
+		max_fd = sock_fd > max_fd ? sock_fd : max_fd;
+
+		... /* Модицикация timeout */
+	}
+	ret = select(max_fd + 1, &fds, NULL, NULL, &timeout);
+	if (ret == 0) {
+		/* Обработка таймаута. */
+	} else {
+		for (...) { /* Перебор всех сокетов */
+			if (FD_ISSET(sock_fd, &fds)) {
+				/* Обработка нового соединения или запроса. */
+			}
+		}
+	}
+}
+\stoptyping
+
+\SlideTitle {Блокирующий и неблокирующие вызовы}
+
+\startitemize
+\item {\tt select} должен быть единственной функцией в приложении, которой
+разрешено спать.
+\item Готовность дескриптора к чтению гарантирует, что 1 последующий вызов {\tt
+read} вернется без блокирования процесса. Что делать, если требуется несколько
+вызовов (например, приняли сразу несколько пакетов)?
+\item Флаг {\tt MSG_DONTWAIT} делает вызовы {\tt recv} и {\tt send}
+неблокирующими.
+\item Если данных нет, возвращается ошибка {\tt EAGAIN} без блокировки:
+\starttyping
+	while (1) {
+		ret = recv(sock_fd, buf, len, MSG_DONTWAIT);
+		if (ret < 0 && errno == EAGAIN) {
+			/* Нет данных */
+			break;
+		} else if (ret < 0) {
+			/* Другая ошибка */
+			return -1;
+		}
+	}
+\stoptyping
+\stopitemize
+
+\SlideTitle {Определение таймаута при наличии нескольких таймеров}
+\externalfigure[diagrams/timeout-calculation.pdf][width=\textwidth]
+$timeout = min(T_1 - Current, T_2 - Current, ..., T_n - Current)$
+
+\SlideTitle {Обработка таймаута при наличии нескольких таймеров}
+\IncludePicture[horizontal][diagrams/timeout-handling.pdf]
+
+\SlideTitle {Замечания по таймерам}
+\startitemize
+\item {\tt select} спит в течение времени, не меньшего, чем {\tt timeout}. Но
+может спать дольше!
+\item После таймаута надо проверять все таймеры, а не только самый ранний.
+\item Вычислять новое значение таймаута надо от текущего момента, а не от
+времени срабатывания предыдущего таймера.
+\stopitemize
+
+\SlideTitle {Упражнения}
+\startitemize
+\item Разработать приложение копирующее данные с файлового дескриптора 0 в
+файловый дескриптор 1. Ожидание новых данных должно быть реализовано с помощью
+функции {\tt select}. Дескриптор 0 должен быть переведен в неблокирующий режим
+помощью функции {\tt fcntl}. Пример для дескриптора {\tt fd}:
+\starttyping
+	include <fcntl.h>
+
+	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+\stoptyping
+\item Разработать приложение, реализующее 10 одновременно работающих таймеров.
+Таймаут для каждого таймера - случайное число в диапазоне от 1 до 10 секунд.
+При срабатывании таймера необходимо выводить сообщение в терминал с номером
+этого таймера. Для получения случайного числа использовать функцию {\tt rand}.
+\stopitemize
+
+\stopcomponent
