@@ -68,7 +68,8 @@ $ LD_LIBRARY_PATH=DIR_HDRS ./EXE_NAME
 Вариант №1:
 
 ```console
-$ cd /path_to_libubox
+$ git clone https://github.com/pavel-angtel/libubox.git
+$ cd ./libubox
 $ cmake . -DBUILD_EXAMPLE=OFF -DBUILD_LUA=OFF
 $ make
 $ make install
@@ -82,7 +83,8 @@ $ make install
 Вариант №2:
 
 ```console
-$ cd /path_to_libubox
+$ git clone https://github.com/pavel-angtel/libubox.git
+$ cd ./libubox
 $ cmake . -DBUILD_EXAMPLE=OFF -DBUILD_LUA=OFF
 $ make
 ```
