@@ -1,0 +1,141 @@
+
+\startcomponent switch-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Сетевой, канальный и физический уровни}
+\IncludePicture[horizontal][diagrams/global-network.pdf]
+
+\SlideTitle {Локальные сети}
+\startitemize
+\item В локальных сетях поддерживается широковещательная (т.е. всем узлам сети)
+рассылка.
+\item Зачем нужна широковещательная рассылка? Для разрешения IP-адресов в
+MAC-адреса. Т.е. спрашиваем всех, где находится IP-адрес X.X.X.X, обладатель
+этого адреса отвечает и сообщает свой MAC-адрес.
+\item Если сеть с общей средой передачи, то все кадры широковещательные
+(например, WiFi).
+\item Почти все локальные сети - Ethernet или родственные (WiFi).
+\item Канальный уровень применительно к Ethernet также называется MAC - Media
+Access Control (управление доступом к среде передачи).
+\item Физичиские уровни (PHY) для Ethernet: 100Base-TX, 1000Base-T (медь),
+100Base-FX, 1000Base-X (оптика).
+\stopitemize
+
+\SlideTitle {Структура Ethernet-кадра}
+\externalfigure[diagrams/ethernet-frame.pdf][width=\textwidth]
+\startitemize
+\item Если значение Ethertype/Length меньше 0x800, то поле содержит длину
+кадра. В противном случае - тип кадра (IP, ARP и т.д.).
+\item Первые 3 байта MAC-адреса - OUI (Organizationally Unique Identifier), код
+производителя.
+\item CRC32 обычно устанавливается и проверяется на аппаратном уровне.
+\item Размер кадра - от 64 до 1522 байтов.
+\stopitemize
+
+\SlideTitle {Передача Ethernet-кадра}
+\IncludePicture[horizontal][diagrams/frame-transmission.pdf]
+
+\SlideTitle {Сеть на основе повторителя}
+\IncludePicture[horizontal][diagrams/repeater.pdf]
+
+\SlideTitle {Коллизия в полудуплексных сетях}
+\IncludePicture[horizontal][diagrams/collision.pdf]
+
+\SlideTitle {Сеть на основе коммутатора}
+\IncludePicture[horizontal][diagrams/switch.pdf]
+
+\SlideTitle {Буферизация кадров}
+\IncludePicture[horizontal][diagrams/switch-buffer.pdf]
+
+\SlideTitle {Изучение MAC-адресов}
+\IncludePicture[horizontal][diagrams/learning.pdf]
+
+\SlideTitle {Устаревание MAC-адресов}
+\IncludePicture[horizontal][diagrams/address-aging.pdf]
+
+\SlideTitle {Коммутатор Корунд}
+\IncludePicture[horizontal][diagrams/managed-switch.pdf]
+
+\SlideTitle {Сокеты семейства AF_PACKET}
+\starttyping
+	#include <linux/if_packet.h>
+	#include <net/ethernet.h>
+
+	int sock;
+	struct sockaddr_ll bind_addr, rx_addr;
+	char pkt_buf[2048];
+	struct ether_header *eth;
+	struct ether_addr *da;
+
+	sock = socket(AF_PACKET, SOCK_RAW, 0);
+
+	memset(&bind_addr, 0, sizeof(bind_addr));
+	bind_addr.sll_family   = AF_PACKET;
+	bind_addr.sll_protocol = htons(ETH_P_ALL);
+	bind_addr.sll_ifindex  = ifindex; /* Индекс можно найти в выводе ip addr */
+	bind(sock, (struct sockaddr*)&bind_addr, sizeof(bind_addr));
+
+	recvfrom(sock, pkt_buf, sizeof(pkt_buf), 0, &rx_addr, sizeof(rx_addr));
+	if (rx_addr.sll_pkttype == PACKET_OTHERHOST) {
+		eth = pkt_buf;
+		da = (struct ether_addr *)eth->ether_dhost;
+		printf("Destination address: %s\n", ether_ntoa(a));
+	}
+\stoptyping
+
+\SlideTitle {Виртуализация сетевого стека}
+\startitemize
+\item Если в Linux настроено два интерфейса eth0 и eth1 192.168.0.8 и
+192.168.0.9, то команда ping 192.168.0.9 {\tt не} будет передавать запрос через
+eth0.
+\item Почему - общая таблица маршрутизации. Linux знает, что оба адреса локальные.
+\item Нужна виртуализация. В Linux'е виртуализация осуществляется с помощью
+контейнеров (aka LXC-контейнеры).
+\item Контейнер виртуализирует среду исполнения процесса, а не всей ОС.
+\item Контейнер состоит из пространств имен (namespace).
+\item Есть пространства имен для процессов, пользователей, сетевого стека.
+\item Пространства имен можно использовать по отдельности, без полной
+виртуализации.
+\stopitemize
+
+\SlideTitle {Запуск приложений в определенном пространстве имен}
+Вывод списка интерфейсов в сетевом пространстве имен /etc/ns/ns1:
+\starttyping
+# nsenter --net=/etc/ns/ns1 ip addr
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+4: ge2@if2: <NO-CARRIER,BROADCAST,MULTICAST,UP,M-DOWN> ...
+    link/ether 68:eb:c5:00:01:02 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.0.10/24 scope global ge2
+       valid_lft forever preferred_lft forever
+\stoptyping
+Замечание. Имена /etc/ns/nsX специфичны для Корунда. На других системах
+именование пространств имен будет отличаться.
+
+\SlideTitle {Схема виртуальной локальной сети}
+\IncludePicture[horizontal][diagrams/virtual-network.pdf]
+
+\SlideTitle {Замечания}
+\startitemize
+\item Тестирование осуществляется с помощью утилиты ping.
+\item Аргументом ping является IP-адрес. Чтобы узнать MAC-адрес, Linux
+отправляет широковещательный ARP-запрос. Обладатель указанного адреса
+возвращает ARP-ответ. Только после этого отправляется ICMP-запрос.
+\item Что должно быть обязательно проверено.
+\startitemize
+\item Если адрес не изучен, кадр отправляется на все порты.
+\item Если изучен, то только на один.
+\item Если поменять порт подключения виртуального компьютера, к которому
+периодически отправляются ICMP-запросы, то должна произойти временная потеря
+связи и последующим автоматическим восстановлением.
+\stopitemize
+\stopitemize
+
+\stopcomponent
