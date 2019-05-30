@@ -1,0 +1,299 @@
+
+\startcomponent kernel-drivers-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Ядро Linux}
+\startitemize
+\item Ядро имеет прямой доступ к аппаратной периферии.
+\item Ядро реагирует на внешние события (прерывания).
+\item Загрузчик записывает ядро в ОЗУ во время запуска системы. Далее ядро
+всегда целиком находится в ОЗУ.
+\item  Основная работа ядра выполняется по запросам от приложений (системным
+вызовам). Похоже на библиотеку.
+\item Вспомогательная работа выполняется в процессах ядра (в выводе {\tt ps}
+имена в квадратных скобках).
+\item Код ядра полностью автономен. Не используется даже стандартная библиотека
+C.
+\item После ошибки ядро не восстанавливается. Требуется перезагрузка.
+\stopitemize
+
+\SlideTitle {Модули ядра}
+Загрузка и выгрузка из ядра - командами {\tt insmod} и {\tt rmmod}. Просмотр -
+{\tt lsmod}.
+
+\starttyping
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/slab.h>
+
+static char *buf;
+static int example_init(void)
+{
+	printk("Hello world\n");
+	buf = kzalloc(100, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+	return 0;
+}
+static void example_exit(void)
+{
+	free(buf);
+}
+
+module_init(example_init);
+module_exit(example_exit);
+\stoptyping
+
+\SlideTitle {Аппаратные шины}
+\IncludePicture[horizontal][diagrams/hardware-buses.pdf]
+
+\SlideTitle {Структура физического адресного пространства}
+\IncludePicture[horizontal][diagrams/address-space.pdf]
+
+\SlideTitle {Обращение к регистрам в C}
+\starttyping
+#define DEVICE_BASE_ADDR    0x06380000
+#define DEVICE_CONFIG_REG   0x0
+#define DEVICE_STATUS_REG   0x1
+#define DEVICE_INTR_REG     0x2
+
+void read_register(void)
+{
+	void *base_addr = (void *)DEVICE_BASE_ADDR;
+	unsigned int config, status;
+
+	config = *(unsigned int *)(base_addr + DEVICE_CONFIG_REG);
+	status = *(unsigned int *)(base_addr + DEVICE_STATUS_REG);
+}
+\stoptyping
+
+\SlideTitle {Структура физического адресного пространства}
+\IncludePicture[horizontal][diagrams/virtual-addresses.pdf]
+
+\SlideTitle {Регистрация и связывание драйвера}
+\starttyping
+#include <linux/platform_device.h>
+#include <linux/of_device.h>
+
+static const struct of_device_id a100_example_of_match[] = {
+	{ .compatible = "ctlm,a100-example", }, {}
+};
+/* platform - название внутренней процессорной шины. */
+static struct platform_driver a100_example_drv = {
+	.driver = {
+		.owner = THIS_MODULE,
+		.name = "a100_example",
+		.of_match_table = a100_example_of_match, /* Признак для связывания */
+	},
+};
+static int a100_example_init(void)
+{
+	return platform_driver_register(&a100_example_drv);
+}
+static void a100_example_exit(void)
+{
+	platform_driver_unregister(&a100_example_drv);
+}
+\stoptyping
+
+\SlideTitle {Дерево устройств (Device Tree)}
+\startitemize
+\item  Структура данных, описывающая недетектируемые устройства (SPI, I2C,
+устройства на внутренней шине) и отношения между ними.
+\item Хранится в ПЗУ устройства. Во время запуска системы загрузчик передает
+дерево устройств ядру.
+\item of_ - OpenFirmware (стандарт, в котором первоначальном был описан формат
+Device Tree).
+\item Пример:
+\starttyping
+soc {
+	/* ... */
+	a100-example {
+		compatible = "ctlm,a100-example";
+		reg = <0x063C0000 0x010000>; /* Базовый адрес и размер
+		                                банка регистров. */
+		interrupts = <4>, <5>;
+	};
+};
+\stoptyping
+\stopitemize
+
+\SlideTitle {Инициализация устройства}
+\starttyping
+#include <linux/io.h>
+
+static int a100_example_probe(struct platform_device *pdev)
+{
+	struct resource *res;
+	void __iomem *base;
+
+	/* Получение базового адреса банка регистров. */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+
+	/* Отображение в виртуальное адресное пространство. */
+	base = ioremap(res->start, resource_size(res));
+	return 0;
+}
+static int a100_example_remove(struct platform_device *pdev) {/* ... */}
+
+static struct platform_driver a100_example_drv = {
+	.probe = a100_example_probe,
+	.remove = a100_example_remove,
+};
+\stoptyping
+
+\SlideTitle {Привязка объектов к {\tt struct platform_device}}
+\starttyping
+static int a100_example_probe(struct platform_device *pdev)
+{
+	struct a100_example_data *data;
+	struct resource *res;
+	void __iomem *base;
+
+	data = kzalloc(sizeof(struct a100_example_data), GFP_KERNEL);
+	/* ... */
+	data->base = ioremap(res->start, resource_size(res));
+
+	platform_set_drvdata(pdev, data);
+	return 0;
+}
+static int a100_example_remove(struct platform_device *pdev)
+{
+	struct a100_example_data *data = platform_get_drvdata(pdev);
+
+	iounmap(data->base);
+	free(data);
+	return 1;
+}
+\stoptyping
+
+\SlideTitle {Чтение и запись регистров}
+\startitemize
+\item Чтение регистра с базовым адресом {\tt base} и смещением 5:
+\starttyping
+#include <linux/io.h>
+
+void __iomem *base;
+u32 reg;
+reg = readl(base + 5);
+\stoptyping
+\item Запись значения {\tt val} в регистр с базовым адресом {\tt base} и смещением 5:
+\starttyping
+u32 val;
+writel(val, base + 5);
+\stoptyping
+\item Установка бита 6 и снятие бита 7:
+\starttyping
+u32 reg;
+reg = readl(base + 5);
+reg |= (1 << 6);
+reg &= ~(1 << 7);
+writel(reg, base + 5);
+\stoptyping
+\stopitemize
+
+\SlideTitle {Информация об устройстве в sysfs}
+\startitemize
+\item Список драйверов для шины platform:
+\starttyping
+# ls /sys/bus/platform/drivers
+\stoptyping
+\item Список устройств на шины platform:
+\starttyping
+# ls /sys/bus/platform/devices
+\stoptyping
+\item Каждому устройству соответствует каталог в sysfs.
+\item Файлы в каталоге - атрибуты.
+\item Все файлы виртуальные. Данные не хранятся на жестком диске.
+\stopitemize
+
+\SlideTitle {Определение новых атрибутов}
+\starttyping
+ssize_t example_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct a100_example_data *data = platform_get_drvdata(to_platform_device(dev));
+
+	/* То, что записывается в buf, передается приложению через системный
+	вызов read. */
+	return sprintf(buf, "%s", "Hello world");
+}
+
+ssize_t example_store(struct device *dev, struct device_attribute *attr,
+		      const char *buf, size_t len)
+{
+	struct a100_example_data *data = platform_get_drvdata(to_platform_device(dev));
+	char *endp;
+
+	/* То, что приложение передает в системный вызов write, оказывается в buf. */
+	data->value = kstrtoul(buf, &endp, 0);
+
+	return len;
+}
+
+static DEVICE_ATTR_RW(example); /* Имя атрибута совпадает с префиксом имен функций. */
+\stoptyping
+
+\SlideTitle {Регистрация атрибутов}
+\starttyping
+static DEVICE_ATTR_RW(example0);
+static DEVICE_ATTR_RO(example1);
+
+static struct device_attribute *example_attrs[] = {
+	&dev_attr_example0,
+	&dev_attr_example1,
+	NULL,
+};
+static struct attribute_group example_group = {
+	.name = "example group",
+	.attrs = example_attrs,
+}
+
+static int a100_example_probe(struct platform_device *pdev)
+{
+	/* ... */
+
+	sysfs_create_group(&pdev->dev.kobj, example_group);
+}
+\stoptyping
+
+\SlideTitle {Обработка событий}
+\IncludePicture[horizontal][diagrams/interrupts.pdf]
+
+\SlideTitle {Регистрация обработчика прерывания}
+\starttyping
+#include <linux/interrupt.h>
+
+static irqreturn_t a100_example_isr(int irq, void *id)
+{
+	struct a100_example_data *data = id;
+	return IRQ_HANDLED;
+}
+static int a100_example_probe(struct platform_device *pdev)
+{
+	struct a100_example_data *data;
+	int irq;
+
+	/* Получение внутреннего номера для 0-го прерывания. */
+	irq = platform_get_irq(pdev, 0);
+
+	/* Регистрация обработчика для прерывания irq. Обработчику при вызове
+	   будет передан указатель data. */
+	request_irq(irq, a100_example_isr, 0, "a100-example-isr", data);
+	return 0;
+}
+\stoptyping
+
+\SlideTitle {Мультиплексирование прерываний}
+\IncludePicture[horizontal][diagrams/irq-mux.pdf]
+
+\SlideTitle {Аппаратный таймер}
+\IncludePicture[horizontal][diagrams/timer.pdf]
+
+\stopcomponent
