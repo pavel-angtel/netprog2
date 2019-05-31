@@ -207,6 +207,48 @@ MAC-адрес отправителя из каждого принятого к�
 Работа с таймерами описана в лабораторной работе №6.
 Работа с контейнерами описана в лабораторной работе №7.
 
+## Примеры для усложненной задачи
+
+1. Извлечение MAC-адресов отправителя `src_mac` и получателя `dst_mac`
+   из буфера `buffer`.
+
+    ```c
+    #include <linux/if_ether.h>
+
+    #define MAX_PACKET_SIZE 65536
+
+    unsigned char buffer[MAX_PACKET_SIZE];
+    struct ethhdr *ethhdr;
+
+    unsigned char *src_mac;
+    unsigned char *dst_mac;
+
+    ethhdr = (struct ethhdr *) buffer;
+    src_mac = ethhdr->h_source;
+    dst_mac = ethhdr->h_dest;
+    ```
+
+2. Преобразование MAC-адреса `mac` в строку `mac_str`.
+
+    ```c
+    #define MAC_STR_SIZE 18
+
+    unsigned char *mac;
+    char mac_str[MAC_STR_SIZE];
+
+    if (snprintf(mac_str,
+                 MAC_STR_SIZE,
+                 "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x",
+                 mac[0],
+                 mac[1],
+                 mac[2],
+                 mac[3],
+                 mac[4],
+                 mac[5]) >= MAC_STR_SIZE) {
+            /* Handle error here. */
+    }
+    ```
+
 # Наблюдение результатов
 
 Для проверки работоспособности Ethernet-повторителя и Ethernet-коммутатора
