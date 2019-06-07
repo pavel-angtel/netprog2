@@ -1,6 +1,6 @@
-DRV_NAME ::= hello_world
+APP_NAME ::= lab-01
 
-MAIN_MAKEFILE ::= ../kmod-common.mk
+MAIN_MAKEFILE ::= ../common.mk
 
 ifneq ($(KERNELRELEASE),)
 MAIN_MAKEFILE ::= $(M)/$(MAIN_MAKEFILE)

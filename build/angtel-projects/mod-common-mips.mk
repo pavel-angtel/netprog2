@@ -1,22 +1,21 @@
-BOARD_ADDRESS ::= 192.168.0.8
+BOARD_ADDRESS ?= 192.168.0.8
 
 ARCH ::= mips
 CROSS_COMPILE ::= mipsel-oe-linux-musl-
-SYSROOT ::= /usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl
 KDIR ::= /usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl/usr/src/kernel
 
-O ?= $(KDIR)
-SCRIPTS = $(O)/scripts/basic/fixdep
+O ::= $(KDIR)
+SCRIPTS ::= $(O)/scripts/basic/fixdep
 
-DRV ::= $(DRV_NAME)
+MOD ::= $(MOD_NAME)
 
 ifneq ($(KERNELRELEASE),)
 
-SRC ::= $(filter-out $(DRV).c, $(notdir $(wildcard $(M)/*.c)))
+SRC ::= $(filter-out $(MOD).c, $(notdir $(wildcard $(M)/*.c)))
 OBJ ::= $(SRC:%.c=%.o)
 
-obj-m ::= $(DRV).o
-$(DRV)-y ::= $(OBJ)
+obj-m ::= $(MOD).o
+$(MOD)-y ::= $(OBJ)
 
 else
 
@@ -35,10 +34,10 @@ clean:
 	M=$$PWD clean
 
 install: all
-	curl --user root: --upload-file $(DRV).ko ftp://$(BOARD_ADDRESS)
+	curl --user root: --upload-file $(MOD).ko ftp://$(BOARD_ADDRESS)
 
 uninstall:
-	curl --user root: --quote "DELE $(DRV).ko" ftp://$(BOARD_ADDRESS)
+	curl --user root: --quote "DELE $(MOD).ko" ftp://$(BOARD_ADDRESS)
 
 help:
 	@echo available targets: all install uninstall clean
