@@ -11,7 +11,8 @@ MOD ::= $(MOD_NAME)
 
 ifneq ($(KERNELRELEASE),)
 
-SRC ::= $(filter-out $(MOD).c, $(notdir $(wildcard $(M)/*.c)))
+SRC ::= $(filter-out $(MOD).c $(notdir $(wildcard $(M)/*mod.c)), \
+          $(notdir $(wildcard $(M)/*.c)))
 OBJ ::= $(SRC:%.c=%.o)
 
 obj-m ::= $(MOD).o
