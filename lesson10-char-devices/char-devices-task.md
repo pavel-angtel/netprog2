@@ -17,8 +17,8 @@
 
 ## Алгоритм решения базовой задачи
 
-1. Инициализировать модуль. При инициализации модуля создать символьное
-   устройство в пространстве ядра ОС. Зарегистрировать драйвер.
+1. Инициализировать модуль. При инициализации модуля создать символьные
+   устройства в пространстве ядра ОС. Зарегистрировать драйвер.
 
 2. Получить доступ к виртуальному адресному пространству таймера.
 
@@ -28,15 +28,15 @@
    Инициализировать верхнюю границу счетчика Counter 0 аппаратного таймера
    Timer 0 значением **0xFFFF**.
 
-4. Создать символьной устройство в пространстве пользователя ОС.
-   При чтении данных из символьного устройства необходимо осуществить запись
-   запрашиваемых данных в буфер, ассоциированный с символьным устройством.
-   Данные при этом копируются из пространства ядра ОС в пространство
-   пользователя ОС. При записи данных в символьное устройство необходимо
-   прочитать записываемые данные, находящееся в буфере, ассоциированном
-   с символьным устройством и применить их к регистрам процессора
-   **Centillium Atlanta 100**. Данные в этом случае копируются из пространства
-   пользователя ОС в пространство ядра ОС.
+4. Создать файлы символьных устройств в пространстве пользователя ОС.
+   При чтении данных из файла символьного устройства необходимо осуществить
+   запись запрашиваемых данных в буфер, ассоциированный с файлом символьного
+   устройства. Данные при этом копируются из пространства ядра ОС в
+   пространство пользователя ОС. При записи данных в файл символьного
+   устройства необходимо прочитать записываемые данные, находящееся в буфере,
+   ассоциированном с файлом символьного устройства и применить их к регистрам
+   процессора **Centillium Atlanta 100**. Данные в этом случае копируются из
+   пространства пользователя ОС в пространство ядра ОС.
 
 5. Освободить ресурсы, отменить регистрацию драйвера, деинициализировать модуль.
 
@@ -48,36 +48,49 @@
     ```c
     #include <linux/fs.h>
 
-    #define MAX_DEVICES 1
-    #define PARAMETERS_PER_DEVICE 1
-    #define MAX_CHAR_DEVICES (MAX_DEVICES * PARAMETERS_PER_DEVICE)
     #define DEVICE_NAME "a100-wdt"
+    #define MAX_DEVICES 1
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
 
-    int ret;
-    dev_t dev;
-    unsigned int baseminor;
+    static int a100_wdt_init(void) {
+            int ret;
+            dev_t dev;
+            unsigned int baseminor;
 
-    baseminor = 0;
+            baseminor = 0;
 
-    ret = alloc_chrdev_region(&dev, baseminor, MAX_CHAR_DEVICES, DEVICE_NAME);
-    if (ret < 0) {
-            /* Handle error here. */
+            ret = alloc_chrdev_region(&dev,
+                                      baseminor,
+                                      MAX_CHAR_DEVICES,
+                                      DEVICE_NAME);
+            if (ret < 0) {
+                    /* Handle error here. */
+            }
+
+            /* ... */
     }
     ```
 
 2. Освобождение диапазона номеров для символьных устройств, добавляемых в
    ядро ОС.
 
-   ```c
+    ```c
     #include <linux/fs.h>
+    #include <linux/cdev.h>
 
     #define MAX_DEVICES 1
-    #define PARAMETERS_PER_DEVICE 1
-    #define MAX_CHAR_DEVICES (MAX_DEVICES * PARAMETERS_PER_DEVICE)
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
 
-    dev_t dev;
+    static struct cdev a100_wdt_cdev;
 
-    unregister_chrdev_region(dev, MAX_CHAR_DEVICES);
+    static void a100_wdt_exit(void)
+    {
+            /* ... */
+
+            unregister_chrdev_region(a100_wdt_cdev.dev, MAX_CHAR_DEVICES);
+    }
     ```
 
 3. Инициализация символьных устройств, добавляемых в ядро ОС.
@@ -85,19 +98,24 @@
     ```c
     #include <linux/cdev.h>
 
-    static int a100_wdt_open(struct inode *inode, struct file *file);
-    static int a100_wdt_release(struct inode *inode, struct file *file);
+    static int a100_wdt_open(struct inode *inode,
+                             struct file *file);
+
+    static int a100_wdt_release(struct inode *inode,
+                                struct file *file);
 
     static ssize_t a100_wdt_read(struct file *file,
                                  char __user *user_buffer,
                                  size_t user_size,
                                  loff_t *offset);
+
     static ssize_t a100_wdt_write(struct file *file,
                                   const char __user *user_buffer,
                                   size_t user_size,
                                   loff_t *offset);
 
     static struct cdev a100_wdt_cdev;
+
     const struct file_operations a100_wdt_fops = {
             .owner = THIS_MODULE,
             .open = a100_wdt_open,
@@ -106,102 +124,234 @@
             .write = a100_wdt_write
     };
 
-    cdev_init(&a100_wdt_cdev, &a100_wdt_fops);
+    static int a100_wdt_init(void) {
+            cdev_init(&a100_wdt_cdev, &a100_wdt_fops);
+
+            /* ... */
+    }
     ```
 
 4. Добавление символьных устройств в ядро ОС.
 
-   ```c
+    ```c
     #include <linux/cdev.h>
 
     #define MAX_DEVICES 1
-    #define PARAMETERS_PER_DEVICE 1
-    #define MAX_CHAR_DEVICES (MAX_DEVICES * PARAMETERS_PER_DEVICE)
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
 
     static struct cdev a100_wdt_cdev;
 
-    int ret;
-    dev_t dev;
+    static int a100_wdt_init(void) {
+            dev_t dev;
+            int ret;
 
-    ret = cdev_add(&a100_wdt_cdev, dev, MAX_CHAR_DEVICES);
-    if (ret < 0) {
-            /* Handle error here. */
+            ret = cdev_add(&a100_wdt_cdev, dev, MAX_CHAR_DEVICES);
+            if (ret < 0) {
+                    /* Handle error here. */
+            }
+
+            /* ... */
     }
     ```
 
 5. Удаление символьных устройств из ядра ОС.
 
-   ```c
+    ```c
     #include <linux/cdev.h>
 
     static struct cdev a100_wdt_cdev;
 
-    cdev_del(&a100_wdt_cdev);
-    ```
+    static void a100_wdt_exit(void)
+    {
+            /* ... */
 
-6. Создание класса устройств в **sysfs**.
-
-   ```c
-    static struct class *a100_wdt_class = NULL;
-
-    a100_wdt_class = class_create(THIS_MODULE, DEVICE_NAME);
-    if (a100_wdt_class == NULL) {
-            /* Handle error here. */
+            cdev_del(&a100_wdt_cdev);
     }
     ```
 
-7. Удаление класса устройств из **sysfs**.
+6. Создание класса устройств.
 
-   ```c
+    ```c
+    #include <linux/platform_device.h>
+    #include <linux/err.h>
+
+    #define DEVICE_NAME "a100-wdt"
+
     static struct class *a100_wdt_class;
 
-    class_destroy(a100_wdt_class);
-    ```
+    static int a100_wdt_init(void) {
+            a100_wdt_class = class_create(THIS_MODULE, DEVICE_NAME);
+            if (IS_ERR(a100_wdt_class)) {
+                    /* Handle error here. */
+            }
 
-8. Добавление устройств класса `a100_wdt_class`.
-
-   ```c
-    <linux/kdev_t.h>
-
-    static struct cdev a100_wdt_cdev;
-
-    struct device *device;
-    int device_index;
-    int parameter_index;
-
-    device = NULL;
-    device_index = 0;
-    parameter_index = 0;
-
-    device = device_create(a100_wdt_class,
-                           NULL,
-                           MKDEV(MAJOR(a100_wdt_cdev.dev),
-                           parameter_index),
-                           NULL,
-                           "a100_wdt_device_%d_timer_%d",
-                           device_index,
-                           device_parameter_index);
-    if (device == NULL) {
-            /* Handle error here. */
+            /* ... */
     }
     ```
 
-9. Удаление устройств класса `a100_wdt_class`.
+7. Удаление класса устройств.
 
-   ```c
-    <linux/kdev_t.h>
+    ```c
+    static struct class *a100_wdt_class;
 
-    static struct cdev a100_wdt_cdev;
+    static void a100_wdt_exit(void)
+    {
+            /* ... */
 
-    int parameter_index;
-
-    parameter_index = 0;
-
-    device_destroy(a100_wdt_class,
-                   MKDEV(MAJOR(a100_wdt_cdev.dev), parameter_index));
+            class_destroy(a100_wdt_class);
+    }
     ```
 
-10. Получение младшего номера устройства из `struct inode *inode`.
+8. Создание списка устройств шины `list_of_devices` и битовой маски
+   используемых символьных устройств `bitmap_of_char_devices`.
+
+    ```c
+    #include <linux/bitmap.h>
+
+    #define MAX_DEVICES 1
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
+
+    LIST_HEAD(list_of_devices);
+    DECLARE_BITMAP(bitmap_of_char_devices, MAX_CHAR_DEVICES);
+    ```
+
+9. Установка бита в `1` для символьного устройства с номером `char_device`
+   в битовой маске `bitmap_of_char_devices`.
+
+    ```c
+    #include <linux/bitmap.h>
+
+    #define MAX_DEVICES 1
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
+
+    DECLARE_BITMAP(bitmap_of_char_devices, MAX_CHAR_DEVICES);
+
+    int char_device;
+
+    set_bit(char_device, bitmap_of_char_devices);
+    ```
+
+10. Установка бита в `0` для символьного устройства с номером `char_device`
+    в битовой маске `bitmap_of_char_devices`.
+
+    ```c
+    #include <linux/bitmap.h>
+
+    #define MAX_DEVICES 1
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
+
+    DECLARE_BITMAP(bitmap_of_char_devices, MAX_CHAR_DEVICES);
+
+    int char_device;
+
+    clear_bit(char_device, bitmap_of_char_devices);
+    ```
+
+11. Поиск первого бита со значением `0` в битовой маске
+    `bitmap_of_char_devices`.
+
+    ```c
+    #include <linux/bitmap.h>
+
+    #define MAX_DEVICES 1
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
+
+    DECLARE_BITMAP(bitmap_of_char_devices, MAX_CHAR_DEVICES);
+
+    int bit_index;
+
+    bit_index = find_first_zero_bit(bitmap_of_char_devices,
+                                    MAX_CHAR_DEVICES);
+    ```
+
+12. Добавление устройств класса.
+
+    ```c
+    #include <linux/platform_device.h>
+    #include <linux/kdev_t.h>
+
+    #define MAX_DEVICES 1
+    #define ATTRIBUTES_PER_DEVICE 1
+    #define MAX_CHAR_DEVICES (MAX_DEVICES * ATTRIBUTES_PER_DEVICE)
+
+    DECLARE_BITMAP(bitmap_of_char_devices, MAX_CHAR_DEVICES);
+
+    static struct cdev a100_wdt_cdev;
+    static struct class *a100_wdt_class;
+
+    /* Initialize private data for platform device here. */
+
+    static int a100_wdt_probe(struct platform_device *pdev) {
+            int i;
+
+            /* ... */
+
+            for (i = 0; i < ATTRIBUTES_PER_DEVICE; i++) {
+                    int char_device;
+                    struct device *device;
+
+                    char_device = find_first_zero_bit(bitmap_of_char_devices,
+                                                      MAX_CHAR_DEVICES);
+                    a100_wdt_attribute_data->char_device = char_device;
+                    set_bit(char_device, bitmap_of_char_devices);
+
+                    /* Initialize private data for attribute here. */
+
+                    device = device_create(a100_wdt_class,
+                                           NULL,
+                                           MKDEV(MAJOR(a100_wdt_cdev.dev),
+                                                 char_device),
+                                           NULL,
+                                           "a100_wdt_device_%d_timer_%d",
+                                           char_device / ATTRIBUTES_PER_DEVICE,
+                                           i);
+                    if (IS_ERR(device)) {
+                            /* Handle error here. */
+                    }
+            }
+
+            /* Add private data for platform device to list here. */
+    }
+    ```
+
+13. Удаление устройств класса.
+
+    ```c
+    #include <linux/platform_device.h>
+    #include <linux/kdev_t.h>
+
+    #define ATTRIBUTES_PER_DEVICE 1
+
+    static struct cdev a100_wdt_cdev;
+    static struct class *a100_wdt_class;
+
+    static int a100_wdt_remove(struct platform_device *pdev) {
+            int i;
+
+            /* ... */
+
+            for (i = 0; i < ATTRIBUTES_PER_DEVICE; i++) {
+                    /* Get private data for attribute here. */
+
+                    device_destroy(a100_wdt_class,
+                                   MKDEV(MAJOR(a100_wdt_cdev.dev),
+                                         a100_wdt_attribute_data->char_device));
+                    clear_bit(a100_wdt_attribute_data->char_device,
+                              bitmap_of_char_devices);
+            }
+
+            /* Delete private data for platform device from list here. */
+
+            /* ... */
+    }
+    ```
+
+14. Получение младшего номера устройства `minor` из `struct inode *inode`.
 
     ```c
     struct inode *inode
@@ -210,7 +360,7 @@
     minor = iminor(inode);
     ```
 
-11. Ассоциирование данных с открытым символьным устройством.
+15. Ассоциирование данных `data` с открытым файлом символьного устройства.
 
     ```c
     struct file *file
@@ -219,49 +369,122 @@
     file->private_data = data;
     ```
 
-12. Копирование данных из пространства ядра ОС в пространство пользователя ОС.
+16. Копирование данных из пространства ядра ОС в пространство пользователя ОС
+    (буфер `user_buffer`).
 
     ```c
+    #include <linux/uaccess.h>
+
+    #define REG_VALUE_STR_SIZE 12
+
+    char reg_value_str[REG_VALUE_STR_SIZE];
+    int ret;
+
+    ret = copy_to_user(user_buffer, reg_value_str, REG_VALUE_STR_SIZE);
+    if (ret != 0) {
+            /* Handle error here. */
+    }
+    ```
+
+17. Копирование данных размером `user_size` из пространства пользователя ОС
+    (буфер `user_buffer`) в пространство ядра ОС.
+
+    ```c
+    #include <linux/uaccess.h>
+
+    #define REG_VALUE_STR_SIZE 12
+
+    char reg_value_str[REG_VALUE_STR_SIZE];
+    int ret;
+
+    if (user_size > REG_VALUE_STR_SIZE) {
+            /* Handle error here. */
+    }
+
+    ret = copy_from_user(reg_value_str, user_buffer, user_size);
+    if (ret != 0) {
+            /* Handle error here. */
+    }
+    ```
+
+18. Чтение данных пользователем из файла символьного устройства.
+
+    ```c
+    #include <linux/uaccess.h>
+
+    #define REG_VALUE_STR_SIZE 12
+
     static ssize_t a100_wdt_read(struct file *file,
                                  char __user *user_buffer,
                                  size_t user_size,
                                  loff_t *offset)
     {
-            char data[] = "test";
-            size_t data_size;
+            char reg_value_str[REG_VALUE_STR_SIZE];
+            int data_size;
             int ret;
 
-            data_size = strlen(data) + 1;
+            if (*offset == 0) {
+                    /* Fill reg_value_str array. */
+            }
 
-            ret = copy_to_user(user_buffer, data, data_size);
+            data_size = min(REG_VALUE_STR_SIZE - (size_t) *offset, user_size);
+            if (data_size <= 0)
+                    return 0;
+
+            ret = copy_to_user(user_buffer,
+                               reg_value_str + (size_t) *offset,
+                               data_size);
             if (ret != 0) {
                     /* Handle error here. */
             }
+
+            *offset += data_size;
 
             return data_size;
     }
     ```
 
-13. Копирование данных из пространства пользователя ОС в пространство ядра ОС.
+19. Запись данных пользователем в файл символьного устройства.
 
     ```c
-    #define PARAMETER_DATA_SIZE 256
+    #include <linux/uaccess.h>
 
-    static ssize_t a100_wdt_write(struct file *file,
-                                  const char __user *user_buffer,
-                                  size_t user_size,
-                                  loff_t *offset)
+    #define REG_VALUE_STR_SIZE 12
+
+    static ssize_t a100_wdt_read(struct file *file,
+                                 char __user *user_buffer,
+                                 size_t user_size,
+                                 loff_t *offset)
     {
-            char data[PARAMETER_DATA_SIZE];
+            char reg_value_str[REG_VALUE_STR_SIZE];
+            unsigned long reg_value;
+            int ret;
 
-            ret = copy_from_user(data, user_buffer, user_size);
+            if (user_size > REG_VALUE_STR_SIZE) {
+                    /* Handle error here. */
+            }
+
+            memset(reg_value_str, 0, REG_VALUE_STR_SIZE);
+
+            ret = copy_from_user(reg_value_str, user_buffer, user_size);
             if (ret != 0) {
                     /* Handle error here. */
             }
 
+            ret = kstrtoul(reg_value_str, 0, &reg_value);
+            if (ret < 0) {
+                    /* Handle error here. */
+            }
+
+            /* Write reg_value to appropriate Centillium Atlanta 100 register */
+
             return user_size;
     }
     ```
+
+Стоит отметить, что отмену регистрации драйвера
+(вызов функции `platform_driver_unregister()`) необходимо выполнять до вызова
+функций `class_destroy()`, `cdev_del()` и `unregister_chrdev_region()`.
 
 # Усложненная задача
 
@@ -276,33 +499,45 @@
 
 Необходимо поддержать следующие символьные устройства:
 
-- **a100_wdt_device_0_gpio_(0-7)** - установка и отображение сигнала
-  GPIO (чтение и запись);
+- **a100_wdt_device_0_gpio_N** - установка и отображение сигнала
+  GPIO (чтение и запись), где **N** принимает значения от **0** до **7**;
 
 ## Рекомендации по выполнению усложненной задачи
 
-TODO
+В структуре **Device Tree** с устройством **a100-wdt** ассоциирован
+набор определенных свойств этого устройства. Среди этого набора присутствует
+свойство **led-gpios**, которое представляет собой массив сигналов GPIO.
+Наличие свойства **led-gpios** указывает на то, что перечисленные в массиве
+сигналы GPIO являются частью устройства и доступны при работе с этим
+устройством. Обращение из драйвера к свойству устройства осуществляется
+посредством использования функционального префикса **CONSUMER_ID**. В данном
+случае функциональным префиксом **CONSUMER_ID** является строка **"led"**.
 
 ## Примеры для усложненной задачи
 
-1. Получение сигнала GPIO из структуры Device Tree с индексом `0`.
+1. Получение сигнала GPIO из структуры **Device Tree** с индексом `gpio_index`.
 
     ```c
+    #include <linux/gpio.h>
+    #include <linux/err.h>
 
     #define CONSUMER_ID "led"
 
-    struct platform_device *pdev;
-    struct gpio_desc *gpio;
-    int device_parameter_index;
+    static int a100_wdt_probe(struct platform_device *pdev) {
+            struct gpio_desc *gpio;
+            int gpio_index;
 
-    device_parameter_index = 0;
+            /* ... */
 
-    gpio = gpiod_get_index_optional(&pdev->dev,
-                                    CONSUMER_ID,
-                                    device_parameter_index,
-                                    GPIOD_OUT_HIGH);
-    if (gpio == NULL) {
-            /* Handle error here. */
+            gpio = gpiod_get_index_optional(&pdev->dev,
+                                            CONSUMER_ID,
+                                            gpio_index,
+                                            GPIOD_OUT_HIGH);
+            if (IS_ERR(gpio)) {
+                    /* Handle error here. */
+            }
+
+            /* ... */
     }
     ```
 
@@ -314,7 +549,7 @@ TODO
     gpiod_put(gpio);
     ```
 
-3. Чтение сигнала GPIO.
+3. Чтение сигнала GPIO в `gpio_value`.
 
     ```c
     struct gpio_desc *gpio;
@@ -323,13 +558,11 @@ TODO
     gpio_value = gpiod_get_value_cansleep(gpio);
     ```
 
-4. Запись сигнала GPIO.
+4. Запись сигнала GPIO из `gpio_value`.
 
     ```c
     struct gpio_desc *gpio;
     int gpio_value;
-
-    gpio_value = 0;
 
     gpiod_set_value_cansleep(gpio, gpio_value);
     ```
@@ -349,7 +582,7 @@ $ rmmod <driver_name>
 ```
 
 Например, если файл драйвера с именем **a100-wdt.ko** находится в директории
-*/home/root*, то команды для загрузки и выгрузки драйвера будут следующими:
+*/home/root/*, то команды для загрузки и выгрузки драйвера будут следующими:
 
 ```console
 $ insmod /home/root/a100-wdt.ko
@@ -363,7 +596,7 @@ $ rmmod a100-wdt
 $ lsmod
 ```
 
-Символьные устройства находятся в директории */dev*, например:
+Символьные устройства находятся в директории */dev/*, например:
 */dev/a100_wdt_device_0_timer_0* или */dev/a100_wdt_device_0_gpio_5*.
 
 Для чтения данных из символьного устройства необходимо воспользоваться командой:
@@ -372,7 +605,7 @@ $ lsmod
 $ cat <path_to_character_device>
 ```
 
-Для записи данных в в символьное устройство необходимо воспользоваться командой:
+Для записи данных в символьное устройство необходимо воспользоваться командой:
 
 ```console
 $ echo <value> > <path_to_character_device>
