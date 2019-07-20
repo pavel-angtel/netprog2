@@ -1,5 +1,8 @@
-APP_MAKEFILE ::= ../app-common-mips.mk
-MOD_MAKEFILE ::= ../mod-common-mips.mk
+APP_MAKEFILE_NAME ::= app-common-mips.mk
+MOD_MAKEFILE_NAME ::= mod-common-mips.mk
+
+APP_MAKEFILE ::= $(RELATIVE_PATH_PREFIX)/$(APP_MAKEFILE_NAME)
+MOD_MAKEFILE ::= $(RELATIVE_PATH_PREFIX)/$(MOD_MAKEFILE_NAME)
 
 ifeq ($(or $(APP_NAME),$(MOD_NAME)),)
 $(error One of APP_NAME or MOD_NAME must be defined.)
