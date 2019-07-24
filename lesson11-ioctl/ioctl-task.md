@@ -41,7 +41,8 @@ struct rw_command {
         int value;
 };
 
-#define IOC_RW_GPIO  _IOW(IOC_MAGIC, 0, struct rw_command)
+#define IOC_RW_GPIO     _IOW(IOC_MAGIC, 0, struct rw_command)
+#define IOC_BLINK_GPIO  _IOW(IOC_MAGIC, 1, int)
 
 #endif
 ```
@@ -128,7 +129,7 @@ struct rw_command {
                             gpio = gpiod_get_index_optional(&pdev->dev,
                                                             CONSUMER_ID_DIGITAL_INS,
                                                             i - LEDS_PER_DEVICE,
-                                                            GPIOD_OUT_HIGH);
+                                                            GPIOD_IN);
                     }
                     if (IS_ERR(gpio)) {
                             /* Handle error here. */
@@ -138,7 +139,7 @@ struct rw_command {
     }
     ```
 
-3. Освобождение сигнала GPIO.
+3. Освобождение сигнала GPIO.  
    См. Лабораторная работа №10. Усложненная задача. Пример №2.
 
 4. Регистрация обработчика прерываний для сигнала GPIO с описанием `gpio`.
@@ -274,6 +275,8 @@ struct rw_command {
     static int a100_wdt_probe(struct platform_device *pdev) {
             struct a100_wdt_attribute *a100_wdt_attribute_data;
 
+            /* ... */
+
             init_waitqueue_head(&a100_wdt_attribute_data->wait_queue);
             a100_wdt_attribute_data->data_ready = 0;
     }
@@ -404,8 +407,8 @@ struct rw_command {
             struct a100_wdt_attribute *a100_wdt_attribute_data;
 
             a100_wdt_attribute_data = container_of(to_delayed_work(work),
-                                struct a100_wdt_attribute,
-                                work);
+                                                   struct a100_wdt_attribute,
+                                                   work);
 
             /* ... */
 
@@ -415,6 +418,8 @@ struct rw_command {
 
     static int a100_wdt_probe(struct platform_device *pdev) {
             struct a100_wdt_attribute *a100_wdt_attribute_data;
+
+            /* ... */
 
             INIT_DELAYED_WORK(&a100_wdt_attribute_data->work,
                               a100_wdt_reverse_gpio);
@@ -492,5 +497,5 @@ $ lsmod
 Команды устройству подаются с помощью пользовательского приложения:
 
 ```console
-$ ./lab_11_bt_app --help
+$ ./lab_11_at_app_mips --help
 ```
