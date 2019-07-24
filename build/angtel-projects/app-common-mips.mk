@@ -18,7 +18,7 @@ CFLAGS ::= -O2 -pipe -g -feliminate-unused-debug-types
 # Extra flags to give to the linker.
 LDFLAGS ::= -Wl,-O1 -Wl,--as-needed
 # Library flags or names given to the linker.
-LDLIBS ::= -lubox
+LDLIBS ::= -lubox -ljansson
 
 $(shell mkdir -p $(BUILD_DIR) $(DEPS_DIR))
 
