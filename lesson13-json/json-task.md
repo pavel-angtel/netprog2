@@ -312,6 +312,57 @@ JSON-элемент удаляется, а память занятая им ос
     /* Operation json_decref(value_2) is done automatically. */
     ```
 
+16. Упаковка JSON-элементов в JSON-объект `object`.
+
+    ```c
+    #include <jansson.h>
+
+    json_t *object;
+
+    int index;
+    const char *key;
+    json_t *wildcard;
+
+    object = json_pack("{s:i, s:s, s:o}",
+                       "index", index,
+                       "key", key,
+                       "wildcard", wildcard);
+    if (json_object == NULL) {
+            /* Handle error here. */
+    }
+
+    /* Do something useful with object here. */
+
+    /* Do it after object is no longer needed. */
+    json_decref(object);
+    ```
+
+17. Распаковка JSON-элементов из JSON-объекта `object`.
+
+    ```c
+    #include <jansson.h>
+
+    json_t *object;
+
+    int index;
+    const char *key;
+    json_t *wildcard;
+
+    int ret;
+
+    ret = json_unpack(object
+                      "{s:i, s:s, s:o}",
+                      "index", &index,
+                      "key", &key,
+                      "wildcard", &wildcard);
+    if (ret == -1) {
+            /* Handle error here. */
+    }
+
+    /* Do it if you need. */
+    json_decref(object);
+    ```
+
 # Усложненная задача
 
 В дополнение к базовой задаче поддержать упрощенные фильтрующие предикаты
@@ -530,7 +581,24 @@ JSONPath **[?( )]**. Выражение предиката выполняет с
     ]
     ```
 
-8. Выбор книги "Alice's Adventures in Wonderland":
+8. Выбор книг в жанре реализм, написанных в прошлом веке:
+
+    ```console
+    $[*][*][?(@['last_century'])][?(@['genre'] == 'Realistic fiction')]
+    ```
+
+    ```json
+    {
+        "name" : "The Catcher in the Rye",
+        "author" : "J. D. Salinger",
+        "country" : "United States",
+        "genre" : "Realistic fiction",
+        "year" : 1951,
+        "last_century" : true
+    }
+    ```
+
+9. Выбор книги "Alice's Adventures in Wonderland":
 
     ```console
     $['books'][?(@['name'] == 'Alice\'s Adventures in Wonderland')]
@@ -544,4 +612,11 @@ JSONPath **[?( )]**. Выражение предиката выполняет с
         "genre" : "Fantasy",
         "year" : 1865
     }
+    ```
+
+    Для простоты анализа выражения в JSON-запросе допускается использование
+    одинарной кавычки без экранирования:
+
+    ```console
+    $['books'][?(@['name'] == 'Alice's Adventures in Wonderland')]
     ```
