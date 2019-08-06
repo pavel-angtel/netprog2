@@ -1,0 +1,70 @@
+{
+    "interfaces" : {
+        "ge1" : {
+            "address" : {
+                "value" : "68:eb:c5:00:02:01"
+            },
+            "mtu" : {
+                "value" : 1000
+            },
+            "operstate" : {
+                "value" : "up"
+            }
+        },
+        "ge3" : {
+            "address" : {
+                "value" : "68:eb:c5:00:02:03"
+            },
+            "mtu" : {
+                "value" : 1000
+            },
+            "operstate" : {
+                "value" : "down"
+            }
+        },
+        "ge5" : {
+            "address" : {
+                "value" : "68:eb:c5:00:02:05"
+            },
+            "mtu" : {
+                "value" : 1000
+            },
+            "operstate" : {
+                "value" : "down"
+            }
+        },
+        "ge7" : {
+            "address" : {
+                "value" : "68:eb:c5:00:02:07"
+            },
+            "mtu" : {
+                "value" : 1000
+            },
+            "operstate" : {
+                "value" : "down"
+            }
+        },
+        "ge9" : {
+            "address" : {
+                "value" : "68:eb:c5:00:02:09"
+            },
+            "mtu" : {
+                "value" : 1000
+            },
+            "operstate" : {
+                "value" : "down"
+            }
+        },
+        "ge10" : {
+            "address" : {
+                "value" : "68:eb:c5:00:02:0a"
+            },
+            "mtu" : {
+                "value" : 1000
+            },
+            "operstate" : {
+                "value" : "down"
+            }
+        }
+    }
+}
