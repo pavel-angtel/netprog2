@@ -15,6 +15,8 @@
 В качестве исходного JSON-документа, содержащего конфигурацию для СУБД,
 предлагается использовать файл *./configuration.json*,
 который находится в директории с текущим заданием.
+Исполняемые файлы с конфигурационной СУБД *./lab_14_cdb_mips* или
+*./lab_14_cdb_x86* также находятся в директории с текущим заданием.
 
 Конфигурационная СУБД поддерживает следующие выражения:
 
@@ -30,6 +32,8 @@
 - **set** - установка значения JSON-элемента;
 - **delete** - удаление JSON-элемента (JSON-элемент должен существовать);
 - **remove** - удаление JSON-элемента (JSON-элемент может не существовать);
+- **subscribe** - подписка на уведомления об изменении JSON-элемента;
+- **unsubscribe** - отмена подписки на уведомления об изменении JSON-элемента;
 
 Конфигурационная СУБД поддерживает работу с группами запросов и ответов.
 
@@ -39,17 +43,29 @@
 
 ```json
 {
-    "interfaces": {
+    "interfaces_configuration": {
         "ge1": {
-            "address": {
-                "value": "68:eb:c5:00:02:01",
-                "status": {
-                    "code": null,
-                    "message": null,
-                    "data": null
-                }
-            },
-            "another_object": {}
+            "address": "68:eb:c5:00:02:01",
+            "mtu": 1010,
+            "link": "up"
+        },
+        "ge3": {
+            "address": "68:eb:c5:00:02:03",
+            "mtu": 1030,
+            "link": "down"
+        },
+        "another_object": {}
+    },
+    "interfaces_status": {
+        "ge1": {
+            "address": "68:eb:c5:00:02:01",
+            "mtu": 1010,
+            "link": "up"
+        },
+        "ge3": {
+            "address": null,
+            "mtu": null,
+            "link": null
         },
         "another_object": {}
     }
@@ -65,9 +81,9 @@
         "jsonrpc": "2.0",
         "method": "get",
         "params": {
-            "jsonpath": "$['interfaces']['ge1']['address']"
+            "jsonpath": "$['interfaces_configuration']['ge1']['address']"
         },
-        "id": 1
+        "id": "sr_get"
     }
     ```
 
@@ -78,21 +94,207 @@
     ```json
     {
         "jsonrpc": "2.0",
-        "result": {
-            "value": "68:eb:c5:00:02:01",
-            "status": {
-                "code": null,
-                "message": null,
-                "data": null
-            }
-        },
-        "id": 1
+        "result": "68:eb:c5:00:02:01",
+        "id": "sr_get"
     }
     ```
 
    Значение JSON-элемента указывается с помощью свойства **"result"**.
 
-3. Формат ответа на некорректный запрос:
+3. Формат группового запроса на получение значений JSON-элементов:
+
+    ```json
+    [
+        {
+            "jsonrpc": "2.0",
+            "method": "get",
+            "params": {
+                "jsonpath": "$['interfaces_configuration']['ge1']['address']"
+            },
+            "id": "br_get_address"
+        },
+        {
+            "jsonrpc": "2.0",
+            "method": "get",
+            "params": {
+                "jsonpath": "$['interfaces_configuration']['ge1']['mtu']"
+            },
+            "id": "br_get_mtu"
+        },
+        {
+            "jsonrpc": "2.0",
+            "method": "get",
+            "params": {
+                "jsonpath": "$['interfaces_configuration']['ge1']['link']"
+            },
+            "id": "br_get_link"
+        }
+    ]
+    ```
+
+4. Формат группового ответа на запрос о получении значений JSON-элементов:
+
+    ```json
+    [
+        {
+            "jsonrpc": "2.0",
+            "result": "68:eb:c5:00:02:01",
+            "id": "br_get_address"
+        },
+        {
+            "jsonrpc": "2.0",
+            "result": 1010,
+            "id": "br_get_mtu"
+        },
+        {
+            "jsonrpc": "2.0",
+            "result": "up",
+            "id": "br_get_link"
+        }
+    ]
+    ```
+
+5. Формат запроса на установку значения JSON-элемента:
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "method": "set",
+        "params": {
+            "jsonpath": "$['interfaces_configuration']['ge1']['address']",
+            "value": "68:eb:c5:00:03:01"
+        },
+        "id": "sr_set"
+    }
+    ```
+
+    Новое значение JSON-элемента указывается с помощью свойства **"value"**.
+
+6. Формат ответа на запрос об установке значения JSON-элемента:
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "result": null,
+        "id": "sr_set"
+    }
+    ```
+
+7. Формат запроса на удаление JSON-элемента (элемент должен существовать):
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "method": "delete",
+        "params": {
+            "jsonpath": "$['interfaces_configuration']['ge1']['address']"
+        },
+        "id": "sr_delete"
+    }
+    ```
+
+8. Формат запроса на удаление JSON-элемента (элемент может не существовать):
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "method": "remove",
+        "params": {
+            "jsonpath": "$['interfaces_configuration']['ge1']['address']"
+        },
+        "id": "sr_remove"
+    }
+    ```
+
+9. Формат ответа на запрос об удалении JSON-элемента:
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "result": null,
+        "id": "sr_delete"
+    }
+    ```
+
+    или
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "result": null,
+        "id": "sr_remove"
+    }
+    ```
+
+10. Формат запроса на подписку
+    (получение уведомлений об изменении JSON-элемента):
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "method": "subscribe",
+        "params": {
+            "jsonpath": "$['interfaces_configuration']['ge1']"
+        },
+        "id": "sr_subscribe"
+    }
+    ```
+
+11. Формат ответа на запрос о подписке
+    (получение уведомлений об изменении JSON-элемента):
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "result": null,
+        "id": "sr_subscribe"
+    }
+    ```
+
+12. Формат уведомления об изменении JSON-элемента:
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "result": {
+            "jsonpath": "$['interfaces_configuration']['ge1']",
+            "value": {
+                "address": "68:eb:c5:00:02:01",
+                "mtu": 1400,
+                "link": "up"
+            }
+        }
+    }
+    ```
+
+    Новое значение JSON-элемента указывается с помощью свойства **"value"**.
+
+13. Формат запроса на отмену подписки
+    (получение уведомлений об изменении JSON-элемента):
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "method": "unsubscribe",
+        "params": {
+            "jsonpath": "$['interfaces_configuration']['ge1']"
+        },
+        "id": "sr_unsubscribe"
+    }
+    ```
+
+14. Формат ответа на запрос об отмене подписки
+    (получение уведомлений об изменении JSON-элемента):
+
+    ```json
+    {
+        "jsonrpc": "2.0",
+        "result": null,
+        "id": "sr_unsubscribe"
+    }
+    ```
+
+15. Формат ответа на некорректный запрос:
 
     ```json
     {
@@ -100,95 +302,24 @@
         "error": {
             "code": -300,
             "message": "Invalid JSONPath",
-            "data": "$?['interfaces']"
+            "data": "?['interfaces_configuration']['ge1']['address']"
         },
-        "id": 1
+        "id": "sr_get_invalid_5"
     }
     ```
 
-   Информация об ошибке указывается с помощью свойства **"error"**.
-
-4. Формат запроса на установку значений JSON-элементов:
-
-    ```json
-    [
-        {
-            "jsonrpc": "2.0",
-            "method": "set",
-            "params": {
-                "jsonpath": "$['interfaces']['ge1']['address']['status']",
-                "value": {
-                    "code": 0,
-                    "message": "Command execution: OK"
-                }
-            },
-            "id": "address"
-        },
-        {
-            "jsonrpc": "2.0",
-            "method": "set",
-            "params": {
-                "jsonpath": "$['interfaces']['ge1']['mtu']['status']",
-                "value": {
-                    "code": 0,
-                    "message": "Command execution: OK"
-                }
-            },
-            "id": "mtu"
-        },
-        {
-            "jsonrpc": "2.0",
-            "method": "set",
-            "params": {
-                "jsonpath": "$['interfaces']['ge1']['operstate']['status']",
-                "value": {
-                    "code": -1,
-                    "message": "Command execution: FAILED"
-                }
-            },
-            "id": "operstate"
-        }
-    ]
-    ```
-
-   Новое значение JSON-элемента указывается с помощью свойства **"value"**.
-
-5. Формат запроса на удаление JSON-элемента:
-
-    ```json
-    {
-        "jsonrpc": "2.0",
-        "method": "delete",
-        "params": {
-            "jsonpath": "$['interfaces']['ge1']['operstate']['status']",
-        },
-        "id": "dge1os"
-    }
-    ```
-
-6. Формат запроса на удаление JSON-элемента:
-
-    ```json
-    {
-        "jsonrpc": "2.0",
-        "method": "remove",
-        "params": {
-            "jsonpath": "$['interfaces']['ge1']",
-        },
-        "id": "rge1"
-    }
-    ```
+    Информация об ошибке указывается с помощью свойства **"error"**.
 
 ## Алгоритм решения базовой задачи
 
 1. Принять следующее макроопределение для публичного адреса СУБД:
 
     ```c
-    #define SOCK_DATABASE_PATH "/tmp/sock_seqpacket_database"
+    #define SOCK_DATABASE_PATH "/tmp/sock_seqpacket_cdb"
     ```
 
 2. Отправить конфигурационной СУБД запрос на получение конфигурации
-   и статуса всех сетевых интерфейсов.
+   всех сетевых интерфейсов.
 
 3. Вывести ответ от СУБД в стандартный поток вывода эмулятора терминала.
 
@@ -256,29 +387,47 @@
 
 В дополнение к базовой задаче реализовать применение настроек сетевых
 интерфейсов, хранящихся в конфигурационной СУБД, с помощью пакета **iproute2**.
-Статус выполнения операций по применению настроек записать в СУБД.
+Фактические настройки сетевых интерфейсов, полученные после попытки
+применения настроек из конфигурационной СУБД, записать в виде статусных
+данных в конфигурационную СУБД.
 
 ## Описание усложненной задачи
 
-JSON-элемент со статусными данными имеет вид:
+Перед выполнением операций по применению настроек сетевых
+интерфейсов необходимо заполнить статусные данные значениями по умолчанию.
+
+Статусные данные со значениями по умолчанию имеют вид:
 
 ```json
 {
-    "code": null,
-    "message": null,
-    "data": null
+    "interfaces_status": {
+        "ge1": {
+            "address": null,
+            "mtu": null,
+            "link": null
+        },
+        "another_object": {}
+    }
 }
 ```
 
-В данном случае:
+Статусные данные с фактическими значениями имеют вид:
 
-- **"code"** - статусный код выполнения команды из пакета **iproute2**;
-- **"message"** - опциональное сообщение о результатах применения настроек;
-- **"data"** - опциональные дополнительные данные;
+```json
+{
+    "interfaces_status": {
+        "ge1": {
+            "address": "68:eb:c5:00:02:01",
+            "mtu": 1010,
+            "link": "up"
+        },
+        "another_object": {}
+    }
+}
+```
 
 Статусные данные записываются для каждого атрибута сетевого интерфейса
-применение которого реализует клиентское приложение. Запись осуществляется
-с использованием свойства **"status"** соответствующего JSON-объекта.
+применение которого реализует клиентское приложение.
 
 # Наблюдение результатов
 

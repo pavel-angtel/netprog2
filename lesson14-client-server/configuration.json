@@ -1,70 +1,34 @@
 {
-    "interfaces" : {
+    "interfaces_configuration" : {
         "ge1" : {
-            "address" : {
-                "value" : "68:eb:c5:00:02:01"
-            },
-            "mtu" : {
-                "value" : 1000
-            },
-            "operstate" : {
-                "value" : "up"
-            }
+            "address" : "68:eb:c5:00:02:01",
+            "mtu" : 1010,
+            "link" : "up"
         },
         "ge3" : {
-            "address" : {
-                "value" : "68:eb:c5:00:02:03"
-            },
-            "mtu" : {
-                "value" : 1000
-            },
-            "operstate" : {
-                "value" : "down"
-            }
+            "address" : "68:eb:c5:00:02:03",
+            "mtu" : 1030,
+            "link" : "down"
         },
         "ge5" : {
-            "address" : {
-                "value" : "68:eb:c5:00:02:05"
-            },
-            "mtu" : {
-                "value" : 1000
-            },
-            "operstate" : {
-                "value" : "down"
-            }
+            "address" : "68:eb:c5:00:02:05",
+            "mtu" : 1050,
+            "link" : "down"
         },
         "ge7" : {
-            "address" : {
-                "value" : "68:eb:c5:00:02:07"
-            },
-            "mtu" : {
-                "value" : 1000
-            },
-            "operstate" : {
-                "value" : "down"
-            }
+            "address" : "68:eb:c5:00:02:07",
+            "mtu" : 1070,
+            "link" : "down"
         },
         "ge9" : {
-            "address" : {
-                "value" : "68:eb:c5:00:02:09"
-            },
-            "mtu" : {
-                "value" : 1000
-            },
-            "operstate" : {
-                "value" : "down"
-            }
+            "address" : "68:eb:c5:00:02:09",
+            "mtu" : 1090,
+            "link" : "down"
         },
         "ge10" : {
-            "address" : {
-                "value" : "68:eb:c5:00:02:0a"
-            },
-            "mtu" : {
-                "value" : 1000
-            },
-            "operstate" : {
-                "value" : "down"
-            }
+            "address" : "68:eb:c5:00:02:0a",
+            "mtu" : 1100,
+            "link" : "down"
         }
     }
 }
