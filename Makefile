@@ -1,5 +1,5 @@
 
-SUBDIRS := $(sort $(wildcard ./lesson*))
+SUBDIRS := $(sort $(wildcard ./lectures/lesson*))
 export SRCDIR := $(shell pwd)
 
 .PHONY : all clean

@@ -1,0 +1,257 @@
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdarg.h>
+#include <sys/time.h>
+#include <limits.h>
+#include <errno.h>
+#include <assert.h>
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+enum state {
+	STOP,
+	ECHO,
+	DELAY,
+	WAIT,
+	GENERATE,
+};
+
+/* Возможные события конечного автомата: прием цифры, прием управляющего
+ * символа, истечение таймаута или разрыв соединения. Цифры и управляющие
+ * символы представляются в кодировке ASCII (т.е. '1', '2', 'e', 's' и т.д.)
+ * Для остальных событий используется перечислимый тип enum event.
+ */
+enum event {
+	PERIOD_EXPIRATION = 256,
+	GENERATE_EXPIRATION,
+	CONNECTION_CLOSED,
+};
+
+struct repeater {
+	unsigned int index;
+	int listen_sock;
+	int data_sock;
+
+	enum state state;
+
+	/* Данные для состояния DELAY. */
+	struct timeval delay_expiration;
+
+	/* Данные для состояния GENERATE. */
+	struct timeval period_expiration;
+	struct timeval generate_expiration;
+	char generated_char;
+	struct timeval generate_period;
+};
+
+static const char *state2str(enum state state)
+{
+	const char *strings[] = {
+		[STOP] = "stop",
+		[ECHO] = "echo",
+		[DELAY] = "delay",
+		[WAIT] = "wait",
+		[GENERATE] = "generate",
+	};
+	return strings[state];
+}
+
+static int init_repeater(struct repeater *r, unsigned int index)
+{
+	struct sockaddr_in addr = {
+		.sin_family = AF_INET,
+		.sin_port = htons(9000 + r->index),
+		.sin_addr = {INADDR_ANY},
+	};
+	int option = 1;
+	int ret;
+
+	r->listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (!r->listen_sock) {
+		fprintf(stderr, "Failed to create socket: %s\n", strerror(errno));
+		return -1;
+	}
+
+	ret = setsockopt(r->listen_sock, SOL_SOCKET, SO_REUSEADDR,
+			 &option, sizeof(option));
+	if (ret < 0) {
+		fprintf(stderr, "Failed to set socket option: %s\n", strerror(errno));
+		goto on_error;
+	}
+
+	ret = bind(r->listen_sock, (struct sockaddr *)&addr, sizeof(addr));
+	if (ret < 0) {
+		fprintf(stderr, "Failed to bind to server: %s\n", strerror(errno));
+		goto on_error;
+	}
+
+	ret = listen(r->listen_sock, 1);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to put socket into listening state: %s\n",
+				strerror(errno));
+		goto on_error;
+	}
+	r->generate_period.tv_sec = 1;
+
+	return 0;
+on_error:
+	close(r->listen_sock);
+	r->listen_sock = -1;
+	return -1;
+}
+
+/* Функция форматирует сообщение с помощью vsnprintf() и записывает его в
+ * передающий сокет повторителя с помощью send().
+ */
+static int send_data(struct repeater *r, const char *fmt, ...)
+{
+	va_list ap;
+
+	/* ... */
+
+	return 0;
+}
+
+static void run_state_machine(struct repeater *r, int event)
+{
+	enum state old_state = r->state;
+	struct timeval now;
+	int ret;
+
+	printf("Received event %d in state %s\n", event, state2str(r->state));
+
+	gettimeofday(&now, NULL);
+
+	switch (r->state) {
+	case STOP:
+		if (event == 'e')
+			r->state = ECHO;
+		else if (event == 'w')
+			r->state = WAIT;
+		break;
+	/* Фрагмент кода отвечает за обработку событий в состояниях ECHO и
+	 * DELAY. Чтобы отличать цифры, от управляющих символов, можно
+	 * использовать функцию isdigit(). Для работы со временем использовать
+	 * макросы timeradd(), timersub(), timercmp(). Вывод повторяемых цифр
+	 * или времени до истечения задержки производится с помощью
+	 * send_data().
+	 */
+
+	/* ... */
+
+	/* Дальнейший код отвечает за обработку событий в состояниях WAIT и
+	 * GENERATE.
+	 */
+
+	/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+
+	}
+	if (r->state != old_state)
+		printf("Transitioning to state %s\n", state2str(r->state));
+	return;
+on_error:
+	return;
+}
+
+int main(int argc, char *argv[])
+{
+	struct repeater repeaters[10];
+	int ret;
+	int i;
+
+	memset(repeaters, 0, sizeof(repeaters));
+	for (i = 0; i < ARRAY_SIZE(repeaters); i++) {
+		repeaters[i].index = i;
+		repeaters[i].listen_sock = -1;
+		repeaters[i].data_sock = -1;
+	}
+	for (i = 0; i < ARRAY_SIZE(repeaters); i++) {
+		ret = init_repeater(&repeaters[i], i);
+		if (ret < 0)
+			goto on_error;
+	}
+
+	while (1) {
+		fd_set fds;
+		int max_fd = 0; /* Наибольший файловый дескриптор, находящийся
+				 * в множестве fds.
+				 */
+		struct timeval now, timeout = {.tv_sec = LONG_MAX};
+
+		FD_ZERO(&fds);
+
+		/* Фрагмент кода переьирает все повторители и добавляет
+		 * необходимый файловый дескриптор в множество fds: дескриптор
+		 * слушающего сокета, если соединение еще не установлено,
+		 * дескриптор передающего сокета - если установлено.
+		 */
+
+		/* ... */
+
+
+		/* Фрагмент кода задает значение timeout - разницу между
+		 * текущим временем и самым ранним временем истечения для всех
+		 * активных таймеров. Используется функция gettimeofday() и
+		 * макросы timeradd(), timersub(), timercmp(). Следует учесть,
+		 * что таймеры активны только у повторителей в состоянии
+		 * GENERATE. Если активных таймеров нет, timeout остается без
+		 * изменений.
+		 */
+
+		/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+
+
+		ret = select(max_fd + 1, &fds, NULL, NULL, &timeout);
+		if (ret < 0) {
+			fprintf(stderr, "select() failed: %s\n", strerror(errno));
+			goto on_error;
+		}
+
+		/* Фрагмент кода проверяет все активные таймеры и генерирует
+		 * события GENERATE_EXPIRATION или PERIOD_EXPIRATION для
+		 * сработавших таймеров. Используется функция gettimeofday() и
+		 * макросы timeradd(), timersub(), timercmp().
+		 */
+
+		/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+
+
+		/* Фрагмент кода перебирает все повторители и проверяет
+		 * готовность их файловых дескрипторах. Если готов к чтению
+		 * слушающий сокет, программа принимает новое передающее
+		 * соединение, если готов передающий сокет, программа читает из
+		 * него данные и передает их в качестве событий на вход
+		 * конечного автомата. Если передающее соединение завершилось,
+		 * программа отправляет автомату событие CONNECTION_CLOSED.
+		 */
+
+		/* ... */
+
+	}
+
+	for (i = 0; i < ARRAY_SIZE(repeaters); i++) {
+		if (repeaters[i].listen_sock >= 0)
+			close(repeaters[i].listen_sock);
+		if (repeaters[i].data_sock >= 0)
+			close(repeaters[i].data_sock);
+	}
+	return 0;
+on_error:
+	for (i = 0; i < ARRAY_SIZE(repeaters); i++) {
+		if (repeaters[i].listen_sock >= 0)
+			close(repeaters[i].listen_sock);
+		if (repeaters[i].data_sock >= 0)
+			close(repeaters[i].data_sock);
+	}
+	return 1;
+}

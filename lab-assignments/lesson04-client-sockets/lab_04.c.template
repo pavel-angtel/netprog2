@@ -1,0 +1,138 @@
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <errno.h>
+#include <assert.h>
+
+#define BUF_SIZE 128
+
+typedef int ftp_code_t; /* -1 - ошибка, >= 0 - код от FTP-сервера */
+
+/* Функция создает потоковый сетевой сокет и устанавливает соединение с
+ * локальным сервером (IP-адрес 127.0.0.1) на указанном порте @port. Далее
+ * функция открывает поток ввода-вывода на этом сокете и отдает его в качестве
+ * возвращаемого значения. Функция использует библиотечные вызовы socket(),
+ * connect(), fdopen() и inet_aton().
+ */
+static FILE *ftp_connect(unsigned short port)
+{
+
+	/* ... */
+
+	return NULL;
+}
+
+/* Функция формирует FTP-запрос из аргументов @ftp_cmd и @ftp_arg и передает
+ * его через управляющее соединение @control_stream в FTP-сервер. После этого
+ * функция читает и анализирует ответ от сервера. Код статуса из ответа
+ * используется как возвращаемое значение, остальной текст ответа помещается в
+ * строку @ftp_reply_text.
+ * Аргументы @ftp_cmd и @ftp_arg являются опциональными. Если @ftp_cmd равен
+ * NULL, функция сразу ждет ответ от сервера.
+ * Функция использует вызовы fprintf(), fgets(), sscanf() и fflush().
+ */
+static ftp_code_t ftp_command(FILE *control_stream,
+			      const char *ftp_cmd,
+			      const char *ftp_arg,
+			      char *ftp_reply_text)
+{
+	ftp_code_t ftp_ret;
+
+	/* ... */
+
+	return ftp_ret;
+}
+
+static int ftp_login(FILE *control_stream, const char *user, const char *password)
+{
+	ftp_code_t ftp_ret;
+	char ftp_reply_text[BUF_SIZE];
+
+	ftp_ret = ftp_command(control_stream, "USER", user, ftp_reply_text);
+	if (ftp_ret < 0) {
+		return -1;
+	} else if (ftp_ret != 331) {
+		fprintf(stderr, "Invalid user name: %s\n", ftp_reply_text);
+		return 0;
+	}
+
+	ftp_ret = ftp_command(control_stream, "PASS", password, ftp_reply_text);
+	if (ftp_ret < 0) {
+		return -1;
+	} else if (ftp_ret != 230) {
+		fprintf(stderr, "Invalid password: %s\n", ftp_reply_text);
+		return 0;
+	}
+	return 0;
+}
+
+/* Функция устанавливает дополнительное соединение для передачи данных от
+ * FTP-сервера. Для этого отправляется команда PASV. Из ответа от сервера
+ * извлекается номер порта, на котором сервер ждет подключения. После установки
+ * соединения функция отправляет серверу команду RETR с аргументом @file_name и
+ * читает данные файла из дополнительного соединения. Полученные данные
+ * записываются в файл с таким же именем в текущем каталоге.
+ */
+static int ftp_retrieve(FILE *control_stream, const char *file_name)
+{
+
+	/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	FILE *control_stream = NULL;
+	int ret;
+
+	control_stream = ftp_connect(21);
+	if (!control_stream) {
+		fprintf(stderr, "Failed to create control stream\n");
+		return 1;
+	}
+	ret = ftp_command(control_stream, NULL, NULL, NULL);
+	if (ret < 0)
+		goto on_error;
+
+	if (argc > 1) {
+		ret = ftp_login(control_stream, argv[1], argc > 2 ? argv[2] : NULL);
+		if (ret < 0) {
+			fprintf(stderr, "Failed to log in to FTP server\n");
+			goto on_error;
+		}
+		printf("Logged in as %s\n", argv[1]);
+	}
+
+	while (1) {
+		char *ftp_cmd = NULL, *ftp_arg = NULL;
+		char command[BUF_SIZE];
+		char ftp_reply_text[BUF_SIZE];
+		ftp_code_t ftp_ret;
+
+		/* Фрагмент кода читает и анализирует команду пользователя с
+		 * помощью fgets() и sscanf(). Далее если введена команда RETR,
+		 * вызывается функция ftp_retrieve(). В остальных случаях -
+		 * ftp_command(). По результатам выполнения выводится код
+		 * статуса и дополнительное сообщение от сервера.
+		 */
+
+		/* ... */
+
+		printf("Code: %d. Reply text: %s.\n", ftp_ret, ftp_reply_text);
+	}
+
+	return 0;
+on_error:
+	fclose(control_stream);
+	return 1;
+}

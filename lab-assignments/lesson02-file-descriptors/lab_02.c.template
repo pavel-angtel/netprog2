@@ -1,0 +1,131 @@
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <errno.h>
+#include <assert.h>
+#include <stdbool.h>
+
+#define BUF_SIZE 128
+
+/*
+ * Функция проверяет имя файла @filename на соответствие шаблону @pattern.
+ * Шаблон имеет следующий вид: xxx, xxx*xxx, *xxx, xxx*, где '*' совпадает с
+ * любой последовательностью символов.
+ * Возвращает true, если имя совпадает с шаблоном, иначе false.
+ */
+static bool match_pattern(const char *filename, const char *pattern)
+{
+
+	/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+
+	return true;
+}
+
+/*
+ * Функция перебирает все файлы в текущем каталоге и выводит в терминал те
+ * имена файлов, которые совпадают с шаблоном @pattern. Совпадение проверяется
+ * с помощью функции match_pattern(). Чтение каталога может производится
+ * стандартными функциями opendir(), readdir, closedir().
+ */
+static int run_ls(const char *pattern)
+{
+	DIR *dir;
+	struct dirent *entry;
+
+	/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+
+	return 0;
+}
+
+/*
+ * Функция обрабатывает специальные последовательности "\n" (переход на новую
+ * строку) и "\b" (удаление предшествующего символа) в строке @echo_data и
+ * записывает результат в файл @file_name. Обработка @echo_data может
+ * производиться с помощью strchr() и memmove(), запись в файл - с помощью
+ * fopen() и fwrite().
+ */
+static int run_echo(const char *file_name, const char *echo_data)
+{
+
+	/* ... */
+
+	return 0;
+}
+
+/*
+ * Функция выводит в терминал содержимое файла @file_name с помощью стандартных
+ * функций fopen(), fread(), fclose().
+ */
+static int run_cat(const char *file_name)
+{
+
+	/* ... */
+
+	return 0;
+}
+
+static int run_touch(const char *file_name)
+{
+	FILE *fp;
+
+	printf("Executing 'touch' of file %s\n", file_name);
+	fp = fopen(file_name, "a");
+	if (!fp) {
+		fprintf(stderr, "Failed to touch file '%s': %s\n",
+				file_name, strerror(errno));
+		return 0;
+	}
+	fclose(fp);
+	return 0;
+}
+
+static int parse_command(const char *command)
+{
+	char cmd_data[BUF_SIZE], file_name[BUF_SIZE];
+	int ret;
+
+	ret = sscanf(command, "touch %s", file_name);
+	if (ret == 1)
+		return run_touch(file_name);
+
+	/*
+	 * Фрагмент кода производит анализ строки для следующих команд:
+	 * echo <value> > <file_name>
+	 * cat < <file_name>
+	 * ls <pattern>
+	 */
+
+	/* ... */
+
+	fprintf(stderr, "Unknown command '%s'\n", command);
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	char command[BUF_SIZE];
+	int ret;
+
+	while (1) {
+		ret = read(STDIN_FILENO, command, sizeof(command) - 1);
+		if (ret < 0) {
+			fprintf(stderr, "Failed to read command from stdin: %s\n",
+					strerror(errno));
+			goto on_error;
+		}
+
+		command[ret] = '\0';
+		ret = parse_command(command);
+		if (ret < 0)
+			goto on_error;
+	}
+
+	return 0;
+on_error:
+	return 1;
+}
