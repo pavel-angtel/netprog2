@@ -2,6 +2,9 @@
 \startcomponent intro-slides
 \environment slides-env
 
+\setupcombinations[distance=1cm]
+\setupframed[frame=off,height=.9\textheight,width=.5\textwidth,top=\vss,bottom=\vss,align=normal]
+
 \setupTitle
   [ title={ПО сетевых устройств},
    author={Трещановский Павел Александрович, к.т.н.},
@@ -9,304 +12,290 @@
   ]
 \placeTitle
 
-\SlideTitle {Так что такое сетевое устройство}
-\IncludePicture[horizontal][diagrams/concept.pdf]
+\SlideTitle {Пример встроенной системы}
+\IncludePicture[horizontal][diagrams/embedded-system-example.jpg]
 
-\SlideTitle {Сетевое устройство как встраиваемая система}
-\setuptables[align={middle,lohi}]
-\starttable[|c|cp(0.4\textwidth)|]
-\HL
-\NC Аппаратное ускорение \VL Специальные функции \AR
-\HL
-\NC Передача пакетов \NC Управление дистанционным питанием\AR
-\HL
-\NC Кодирование голоса и видео \NC Сбор данных с датчиков\AR
-\HL
-\NC Шифрование \NC Управление промышленными объектами (насосы, двигатели и др.) \AR
-\HL
-\stoptable
-
-\\
-\\
-В любом случае устройство должно быть эффективно по экономическим показателям
-(цена самого устройства, цена электричества, охлаждения и т.д.)!
-
-\SlideTitle {Аппаратная архитектура сетевого устройства}
-\IncludePicture[horizontal][diagrams/hardware-architecture.pdf]
-
-\SlideTitle {Сетевой аспект}
-\IncludePicture[horizontal][diagrams/network-interaction.pdf]
-
-\SlideTitle {Программная архитектура сетевого устройства}
-\IncludePicture[horizontal][diagrams/software-architecture.pdf]
-
-\SlideTitle {О чем курс?}
+\SlideTitle {Основные области применения встроенных систем}
+Согласно отчету www.marketresearchfuture.com да 2020 год:
 \startitemize
-\item {\bf Не} об этом.
-
-Языки программирования, администрирование коммутаторов Cisco.
-\item Не столько об этом, но и об этом тоже.
-
-Linux, программирование на C, сетевые протоколы и технологии.
-\item Скорее об этом.
-
-Архитектура ПО сетевого устройства, разработка компонентов ПО СУ,
-взаимодействие между компонентами, автоматическое управление сетевыми
-устройствами.
+\item Automotive
+\item Telecommunication
+\item Healthcare
+\item Industrial
+\item Consumer Electronics
+\item Military \& Aerospace
 \stopitemize
 
-\SlideTitle {Командный интерпретатор ОС Linux (shell)}
-shell - интерпретатор + исполнитель скриптов.
+\SlideTitle {Промышленные и транспортные системы}
 
-shell \textasciitilde язык программирования (работа с командами и переменными).
-
+\startcombination
+\framed{\externalfigure[diagrams/industrial-devices2.jpg][width=0.5\textwidth]}{}
+\framed
+{
 \startitemize
-\item Вывод списка файлов в текущем каталоге (аргумент {\tt -l} запрашивает вывод метаданных).
-\starttyping
-$ ls
-$ ls -l
-\stoptyping
-\item Задание переменной {\tt var}. {\bf Важно!} Пробелов вокруг {\tt =} быть не должно.
-\starttyping
-$ var=123
-\stoptyping
-\item Вывод значения переменной {\tt PATH} с помощью команды {\tt echo}.
-\starttyping
-$ echo $PATH
-\stoptyping
-\item Вывод справки по команде {\tt ls}.
-\starttyping
-$ man ls
-\stoptyping
+\item Двигатели
+\item Нефтепроводы, газопроводы
+\item Датчики (давления, температуры, влажности и др.)
+\item Промышленные контроллеры
+\item Мультимедийные системы
+\item Позиционирование
+\stopitemize
+}{}
+\stopcombination
+\SlideTitle {Телекоммуникационные системы}
+
+\startcombination
+\framed{\externalfigure[diagrams/telecom-devices.jpg][width=0.5\textwidth]}{}
+\framed
+{
+\startitemize
+\item Коммутаторы
+\item Маршрутизаторы
+\item Точки доступа
+\item Базовые станции
+\item Модемы
+\stopitemize
+}{}
+\stopcombination
+
+\SlideTitle {Требования к встроенным системам}
+\startitemize
+\item Работа в режиме реального времени
+\item Высокая производительность (в рамках отведенной задачи)
+\item Надежность
+\item Низкая мощность и тепловыделение
+\item Доверенность
+\item Низкая цена
 \stopitemize
 
-\SlideTitle {Дерево файлов в ОС Linux}
-
+\SlideTitle {Некоторые факты о встроенных системах}
+Christof Ebert, Embedded Software: Facts, Figures and Future:
 \startitemize
-\item Пример абсолютного пути (начинается с /).
-
-/home/student/file1.txt
-\item Пример относительного пути (. - текущий каталог).
-
-./file1.txt
-\item Команда вывода текущего каталога.
-\starttyping
-$ pwd
-\stoptyping
-\item Команда смены текущего каталога.
-\starttyping
-$ cd /home/student/newdir
-\stoptyping
-\item Команды создание и удаление файла file2 в текущем каталоге.
-\starttyping
-$ touch file2
-$ rm file2
-\stoptyping
+\item На каждого человека приходится 30 микропроцессоров
+\item 98 микропроцессоров находятся во встроенных системах
+\item В каждом автомобиле - от 20 до 70 управляющих устройств (100 миллионов
+машинных инструкций)
+\stopitemize
+Прогноз www.marketresearchfuture.com:
+\startitemize
+\item Объем мирового рынка встроенных систем к 2025 году - 291 миллиард
+долларов.
 \stopitemize
 
-\SlideTitle {Синтаксис команды}
-
-{\color[darkgreen] {Локальная установка переменной (только для данной команды)}}
-
-{\color[red] {Путь к команде (относительный путь ищется в каталогах \$PATH)}}
-
-{\color[darkblue] {Аргументы команды (передаются в виде массива строк в приложение)}}
-
-{\color[darkyellow] {Собственный синтаксис shell}}
-
-\\
-
+\SlideTitle {Ключевые тенденции: умный город}
+Проблемы:
 \startitemize
-\item Запуск программы {\tt myprogram} с заданием переменной окружения VAR, заданием
-именованных аргументов {\tt a} и {\tt b} и заданием одного позиционного
-аргумента со значением {\tt posargument}.
-
-{\tt {\color[darkgreen] {VAR=123}} {\color[red] {myprogram}} {\color[darkblue] {-a 1 -b 2 posargument}}}
-
-\item Проверка существования файла {\tt file1} и его вывод в случае успеха.
-
-{\tt {\color[darkyellow] {if}} {\color[red] {[}} {\color[darkblue] {-f file1 ]}}{\color[darkyellow]{; then} {\color[red] {cat}} {\color[darkblue] {file1}} {\color[darkyellow]{; fi}}}}
-
-\item Как узнать, где находится команда {\tt myprogram}.
-
-\starttyping
-$ which myprogram
-\stoptyping
+\item Рост населения
+\item Рост урбанизации
+\item Исчерпание ресурсов
+\item Разрозненность и фрагментарность существующих информационных технологий
 \stopitemize
 
-\SlideTitle {Сборка приложения с помощью GCC}
+Определение умного города согласно аналитическому агентству Forrester:
+
+A \quote{city} that uses information and communications technologies to make
+the critical infrastructure components and services of a city — administration,
+education, healthcare, public safety, real estate, transportation, and
+utilities — more aware, interactive, and efficient.
+
+\SlideTitle {Составляющие умного города}
 \startitemize
-\item Простейшая команда сборки приложения hello из исходного файла hello.c.
-Заголовочные файлы автоматически ищутся в /usr/include, библиотеки
-автоматически ищутся в /usr/lib.
-\starttyping
-$ gcc -o hello hello.c
-\stoptyping
-\item Сборка с подключением библиотеки libreadline и дополнительными каталогами
-поиска заголовочных файлов и библиотек.
-\starttyping
-$ gcc -o hello -I./myheaders -L./mylibs -lreadline hello.c
-\stoptyping
-\item Поэтапная сборка. Сначала исходный файл компилируется в объектный. Потом
-объектный файл компонуется в приложение.
-\starttyping
-$ gcc -o hello.o -c hello.c
-$ gcc -o hello hello.o
-\stoptyping
+\item Коммунальные службы: автоматические дистанционный учет ресурсов, гибкое
+распределение ресурсов.
+\item Транспорт: предсказание трафика, управление трафиком в зависимости от
+текущей нагрузки.
+\item Здравоохранение: электронная история болезни, дистанционное наблюдение за
+пациентами.
+\item Безопасность: видеонаблюдение.
+\item Умный дом: мониторинг и управление потреблением тепла, воды, света и др.
 \stopitemize
 
-\SlideTitle {Этапы сборки}
-\IncludePicture[horizontal][diagrams/build-stages.pdf]
+\SlideTitle {Инфраструктура умного города}
+\IncludePicture[horizontal][diagrams/smart-city-structure.pdf]
 
-\SlideTitle {Системы сборки}
-
-Системы сборки: make, automake, cmake.
-
-Зачем они нужны?
-\startitemize
-\item Пересборка только для изменившихся файлов.
-\item Конфигурирование сборки (включение/выключение частей приложения и др.).
-\item Формирование списка аргументов gcc.
-\stopitemize
-
-Сборка цели hello с помощью системы сборки make:
-\starttyping
-$ make hello
-\stoptyping
-
-Удаление всех сгенерированных файлов (цель clean):
-\starttyping
-$ make clean
-\stoptyping
-
-\SlideTitle {Синтаксис Makefile}
-
-{\color[darkgreen] {Цели}}
-
-{\color[red] {Зависимости}}
-
-{\color[darkblue] {Генератор цели}}
-
-{\color[darkyellow] {Прочий синтаксис Makefile}}
+\SlideTitle {Ключевые тенденции: Интернет вещей}
+"An open and comprehensive network of intelligent objects that have the
+capacity to auto-organize, share information, data and resources, reacting and
+acting in face of situations and changes in the environment"
 
 \\
 
-{\tt {\color[darkyellow] {CFLAGS = -O2}}}
+"The Internet [of things] is not only a network of computers, but it has evolved into a
+network of devices of all types and sizes, vehicles, smartphones, home appliances,
+toys, cameras, medical instruments and industrial systems, all connected, all
+communicating and sharing information all the time"
 
-{\tt {\color[darkgreen] {hello:}} {\color[red] {hello.o}}}
-
-\type{        }{\tt {\color[darkblue] {gcc -o \$@ \$<}}}
-
-{\tt {\color[darkgreen] {hello.o:}} {\color[red] {hello.c}}}
-
-\type{        }{\tt {\color[darkblue] {gcc \$(CFLAGS) -c -o \$@ \$<}}}
-
-\\
-
-@ - текущая цель.
-
-< - первая зависимость текущей цели.
-
-\SlideTitle {Кросс-компиляция (проблемы)}
-
+\SlideTitle {Интернет вещей, свойства}
 \startitemize
-\item Другой набор процессорных инструкций.
-\item Другие заголовочные файлы (из-за отличного набора библиотек, из-за
-отличий в версиях ядра и библиотек).
-\item Другие библиотеки.
-\item Исполняемый файл запускается не на компьютере, а на встроенной системе.
+\item Связность: все подключено к глобальной инфраструктуре.
+\item Гетерогенность: разнообразие аппаратных платформ и сетевых технологий.
+\item Масштаб: на порядок больше устройств, чем в традиционном Интернете.
+\item Динамичность: изменение количества и местоположения устройств, изменение
+состояния устройств (включение, выключение, засыпание, пробуждение).
+\item Защищенность: безопасная передача личных данных через глобальную сеть.
 \stopitemize
 
-\SlideTitle {Кросс-компиляция (решение)}
+\SlideTitle {Интернет вещей, архитектура}
+\IncludePicture[horizontal][diagrams/iot-architecture.pdf]
 
+\SlideTitle {Ключевые тенденции: искусственный интеллект}
+\IncludePicture[horizontal][diagrams/ai-yolo.png]
+
+\SlideTitle {Граничные вычисления (Edge computing)}
+\IncludePicture[horizontal][diagrams/edge-computing.png]
+
+\SlideTitle {Преимущества граничных вычислений}
 \startitemize
-\item Для сборки используется кросс-компилятор mipsel-oe-linux-musl-gcc (и
-другие утилиты с таким же префиксом). Компилятор находится в
-/usr/angtel-sdk/sysroots/x86_64-oesdk-linux/usr/bin/mipsel-oe-linux-musl/.
-\item Системные библиотеки и заголовочные файлы {\bf не} используются.
-\item Библиотеки и заголовочные файлы подключаются из
-/usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl/usr/lib и
-/usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl/usr/include, соответственно.
-Для этого у компилятора GCC настраивается \quote{виртуальный корень} (sysroot)
-со значением /usr/angtel-sdk/sysroots/mips32el-nf-oe-linux-musl.
-\item В Makefile добавляется цель install, которая записывает исполняемый файл
-на плату по протоколу FTP.
+\item Высокая отзывчивость: меньше время передачи данных и больше пропускная
+способность.
+\item Масштабируемость: снижение нагрузки на облако за счет локальной
+предварительной обработки данных.
+\item Безопасность: не требуется передача всех данных через глобальную сеть.
+\item Надежность: защита от сбоя облака или сети передачи данных.
 \stopitemize
 
-\SlideTitle {Подключение коммутатора \quote{Корунд}}
-\IncludePicture[horizontal][diagrams/corundum.pdf]
-
-\SlideTitle {Работа с FTP-клиентом}
+\SlideTitle {Ключевые тенденции, замечания}
 \startitemize
-\item Подключение к устройству:
-\starttyping
-$ ftp 192.168.0.8
-\stoptyping
-\item имя пользователя - root, пароль - пустая строка.
-\item Загрузка файла file1 на плату:
-\starttyping
-ftp> put file1
-\stoptyping
-\item Скачивание файла file2 с платы:
-\starttyping
-ftp> get file2
-\stoptyping
-\item Завершение FTP-сессии:
-\starttyping
-ftp> quit
-\stoptyping
+\item Встроенные системы будут играть ключевую роль.
+\item Расширение сетевой инфраструктуры: сеть доходит до каждого физического
+объекта.
+\item В глобальной сети вещей все устройства будут сетевыми, не только
+коммутаторы, маршрутизаторы.
+\item В России развитие и внедрение Интернета вещей, искусственного интеллекта
+и концепции "Умный дом" будет происходить в рамках национального проекта
+"Цифровая экономика". Сквозные цифровые технологии "Новые производственные
+технологии", "Технологии беспроводной связи" и др.
 \stopitemize
 
-\SlideTitle {Работа с Telnet-клиентом}
+\SlideTitle {Система на кристалле - основа встроенной системы}
+\IncludePicture[horizontal][diagrams/typical-soc.pdf]
+
+\SlideTitle {Процессорные ядра ARM и MIPS}
+Ядро ARM
 \startitemize
-\item Подключение к устройству:
-\starttyping
-$ telnet 192.168.0.8
-\stoptyping
-\item Вывод информации о системе:
-\starttyping
-# uname -a
-\stoptyping
-\item Разрешение исполнения файла file1:
-\starttyping
-# chmod +x file1
-\stoptyping
-\item Запуск приложения file1:
-\starttyping
-# ./file1
-\stoptyping
-\item Завершение сессии:
-\starttyping
-# exit
-\stoptyping
+\item Архитектура RISC.
+\item Существуют 32-битная и 64-битная версия.
+\item Старшая линейка ядер - Cortex-A. Типичная частота 1-1.5 ГГц. Количество
+ядер на кристалле - 1-16.
+\item Производители процессоров: NXP, Qualcomm, Broadcom.
 \stopitemize
 
-\SlideTitle {С-строки}
-
+Ядро MIPS
 \startitemize
-\item Представление строки \quote{text} в языке C: ['t', 'e', 'x', 't', '\textbackslash0'].
-\item Длина строки {\tt str} (без нулевого байта): \type{strlen(str)}.
-\item Сравнение строк {\tt s1} и {\tt s2} (результат 0, если равны): \type{strcmp(s1, s2)}.
-\item Вывод форматированной строки в буфер {\tt buf} размера {\tt size}:
-
-\type{snprinf(buf, size, fmt, ...)}.
-\item Преобразование строки {\tt str} в число: \type{atoi(str)}.
+\item Открытая архитектура.
+\item Являются частью российских процессоров "Байкал".
 \stopitemize
 
-\SlideTitle {Динамическое выделение памяти}
-\IncludePicture[horizontal][diagrams/memory-allocation.pdf]
+\SlideTitle {Linux, история}
+\IncludePicture[horizontal][diagrams/unix-timeline.png]
 
-\SlideTitle {Задание}
+\SlideTitle {Linux, факты}
+\startcombination
+\framed[width=0.3\textwidth]{\externalfigure[diagrams/torvalds.jpg][width=0.3\textwidth]}{}
+\framed[width=0.65\textwidth]
+{
+\startitemize
+\item Linux - ядро, а не полная ОС.
+\item Первая версия выпущена в 1991 году Линусом Торвальдсом.
+\item Поддерживает 25 процессорных архитектур.
+\item Масштабируемость: от самых маленьких встроенных систем до суперкомпьютеров.
+\item Объем - около 2 миллионов строк кода.
+\item Оценочная стоимость разработки - 14 миллиардов долларов.
+\stopitemize
+}{}
+\stopcombination
 
-Как должна выглядеть рабочая программа:
+\SlideTitle {Минимальное программная среда Linux}
+\IncludePicture[horizontal][diagrams/minimal-environment.pdf]
+
+\SlideTitle {Расширенная программная среда Linux}
+\IncludePicture[horizontal][diagrams/extended-environment.pdf]
+
+\SlideTitle {Пакеты и репозитории}
+\IncludePicture[horizontal][diagrams/linux-packages.png]
+
+\SlideTitle {Дистрибутивы Linux}
+\startitemize
+\item Позволяют создать полноценную операционную систему на основе ядра Linux с
+помощью открытого ПО.
+\item Предоставляют коллекцию пакетов, оптимизированную под определенную
+область применения и процессорную архитектуру.
+\item Предоставляют средства создания и установки пакетов.
+\item Часто предоставляют средства конфигурирования ОС: настройка системных
+служб, сетевые настройки, firewall и др.
+\item Известные дистрибутивы: Debian, Ubuntu, Fedora, Gentoo.
+\stopitemize
+
+\SlideTitle {Debian, статистика}
+\setupTABLE[row][first][align=center]
+\setupTABLE[row][each][bottomframe=on]
+\bTABLE
+\bTABLEhead
+\bTR
+\bTH \eTH
+\bTH lenny (2009) \eTH
+\bTH sid (2020) \eTH
+\eTR
+\eTABLEhead
+\bTABLEbody
+\bTR
+\bTD Место на диске (КБ) \eTD
+\bTD 63925088 \eTD
+\bTD 332244092 \eTD
+\eTR
+\bTR
+\bTD Количество строк кода \eTD
+\bTD 351014627 \eTD
+\bTD 1349464674 \eTD
+\eTR
+\bTR
+\bTD Количество пакетов \eTD
+\bTD 12517 \eTD
+\bTD 31651 \eTD
+\eTR
+\bTR
+\bTD Количество исходных файлов \eTD
+\bTD 3713295 \eTD
+\bTD 16430196 \eTD
+\eTR
+\eTABLEbody
+\eTABLE
+
+\SlideTitle {Debian, языки программирования}
+\IncludePicture[horizontal][diagrams/debian-languages.png]
+
+\SlideTitle {OpenEmbedded - конструктор дистрибутивов}
+\IncludePicture[horizontal][diagrams/openembedded.pdf]
+
+\SlideTitle {Системное программирование}
+\startitemize
+\item Драйверы периферийных устройств
+\item Системные утилиты
+\item Базы данных
+\item Сетевые серверы и клиенты
+\item Программы для потоковой обработки данных (в частности, сетевых пакетов)
+\item Программы управления датчиками и исполнительными устройствами
+\stopitemize
+
+\SlideTitle {AngtelOS в виртуальной машине}
+\IncludePicture[horizontal][diagrams/virtualbox.pdf]
+
+\SlideTitle {Редактирование и сборка программ}
+\IncludePicture[horizontal][diagrams/editor.pdf]
+
+\SlideTitle {Система сборки make}
 \starttyping
-# ./prog
-2 + 5 -    3
-Result: 4
-#
+цель : зависимости
+	shell-команда для создания цели из зависимостей
+
+lab_02: lab_02.o
+	gcc -o lab_02 lab_02.o
+
+%.o: %.c
+	gcc -O2 -Wall -g -o $@ -c $<
+
+clean:
+	rm -f *.o lab_02
 \stoptyping
 
-Чтение строки из потока ввода выполняется с помощью функции {\tt getline}. Если
-строка еще не введена, {\tt getline будет ожидать ввода. После завершения
-вызова возвращается строка в динамически выделенном буфере.
 \stopcomponent
