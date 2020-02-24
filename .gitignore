@@ -1,5 +1,7 @@
 
 *.swp
+*.swn
+*.swo
 *.aux
 *.log
 *.tuc
