@@ -1,0 +1,374 @@
+
+\startcomponent file-descriptors-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Multics vs Unix}
+Multics
+\startitemize
+\item Совместная разработка MIT, Bell Labs и General Electric.
+\item Высокоуровневый язык программирования PL/1.
+\item Инновационные идеи: файловая система, виртуальная страничная память,
+динамические библиотеки и др.
+\item Через пять лет разработки (64-69) - отсутствие рабочего продукта.
+\stopitemize
+
+Unix
+\startitemize
+\item 4-5 разработчиков первоначальной версии.
+\item Жесткие аппаратные ограничения.
+\item Минимальный функционал.
+\item Рабочий прототип был получен после нескольких месяцев разработки в 1969
+году.
+\stopitemize
+
+\SlideTitle {Top-Down vs Bottom-Up}
+\IncludePicture[horizontal][diagrams/td-bu.pdf]
+
+\SlideTitle {Преимущества и недостатки}
+\startitemize
+\item Bottom-Up позволяет быстрее получить рабочий прототип.
+\item Bottom-Up лучше приспособлен к эволюции технических требований и
+возможностей. Части системы можно менять и/или адаптировать к новым условиям.
+\item Top-Down обычно более полно удовлетворяет исходным требованиям.
+\item Примеры Bottom-Up решений - файлы, файловые системы, большинство
+операционных систем.
+\stopitemize
+
+\SlideTitle {Принципы разработки ОС Unix}
+McIlroy, предисловие к Unix Time-Sharing System (1978):
+\startitemize
+\item Make each program do one thing well. To do a new job, build afresh rather
+than complicate old programs by adding new \quote{features}.
+\item Expect the output of every program to become the input to another, as yet
+unknown, program. Don't clutter output with extraneous information. Avoid
+stringently columnar or binary input formats. Don't insist on interactive
+input.
+\item Design and build software, even operating systems, to be tried early,
+ideally within weeks. Don't hesitate to throw away the clumsy parts and rebuild
+them.
+\stopitemize
+
+\SlideTitle {Иерархия каталогов и файлов}
+\IncludePicture[horizontal][diagrams/file-hierarchy.pdf]
+
+\SlideTitle {Иерархия каталогов, замечания}
+\startitemize
+\item У каждого процесса есть текущий каталог.
+\item Абсолютный путь - начинается с {\tt /} и перечисляет имена каталогов от
+корня до цели. Например, {\tt /home/root/share/netprog2}.
+\item Относительный путь - перечисляет имена каталогов от текущего каталога до
+цели. Например, {\tt share/netprog2} или {\tt ./share/netprog2}.
+\item {\tt \sim} (тильда) эквивалентна пути к домашнему каталогу пользователя.
+Для пользователя root - {\tt /home/root}.
+\stopitemize
+
+\SlideTitle {Внутреннее представление в ядре ОС}
+\IncludePicture[horizontal][diagrams/inode-dentry.pdf]
+
+\SlideTitle {Метаданные}
+\startitemize
+\item Владелец файла.
+\item Тип файла (обычный, каталог, символьный, блочный).
+\item Права доступа к файлу - rwx, где r - доступ на чтение, w - на запись, x -
+на исполнение.
+\item Права доступа независимо задаются для владельца файла, для группы
+пользователей, к которой принадлежит владелец, и для всех остальных
+пользователей.
+\item Права часто записываются в виде 3 цифр. Например, 755 (111 101 101 в
+двоичной записи) разрешает любой доступ для владельца, но только чтение и
+исполнение для его группы и прочих пользователей.
+\item Время создания и последнего изменения файла.
+\item Размер файла.
+\stopitemize
+
+\SlideTitle {Просмотр и изменение метаданных}
+
+\startitemize
+\item Просмотр метаданных:
+\starttyping
+$ ls -l
+drwxr-xr-x 18 pavel pavel 4096 27 févr. 22:35 lab-assignments
+\stoptyping
+d - каталог, 18 - количество файлов внутри.
+\item Задание прав доступа:
+\starttyping
+$ chmod 777 ./Makefile
+\stoptyping
+\item Задание владельца:
+\starttyping
+$ chown pavel:pavel ./Makefile
+\stoptyping
+\item Обновление времени доступа к файлу:
+\starttyping
+$ touch lab_00.c
+\stoptyping
+\stopitemize
+
+\SlideTitle {Специальные файлы}
+
+\startitemize
+\item Доступ к большинству периферийных устройств осуществляется через
+специальные файлы - символьные и блочные файлы.
+\item Символьные файлы предоставляют доступ к устройствам, передающим и
+принимающим поток байтов. Например, последовательный интерфейс, модем GSM,
+терминал.
+\item Блочные файлы предоставляют доступ к устройствам, предоставляющим
+произвольный доступ к массиву байтов. Например, диски и разделы.
+\item Метаданные специальных файлов содержат 2 числа - старший и младший
+номера. Эти числа идентифицируют устройство. Имя файла не имеет значения для
+ядра ОС.
+\item Обычно файлы устройств находятся в каталоге /dev: /dev/tty1 - терминал,
+/dev/sda - жесткий диск и т.д.
+\stopitemize
+
+\SlideTitle {Специальные файлы, замечания}
+
+\startitemize
+\item Сами файлы не содержат никаких данных - все операции чтения и записи
+реализуются нижележащими устройствами.
+\item Файл - это не само устройство, а только интерфейс к нему. Наличие или
+отсутствие файла не означает наличие или отсутствие устройства.
+\item Обычно создаются и удаляются системой автоматически.
+\item Могут быть созданы вручную:
+\starttyping
+$ mknod another_tty1 c 4 1
+\stoptyping
+Создает символьный файл для терминала (старший номер 4, младший номер 1).
+\stopitemize
+
+\SlideTitle {Диски и разделы}
+\IncludePicture[horizontal][diagrams/disks-volumes.pdf]
+
+\SlideTitle {Точки монтирования}
+\IncludePicture[horizontal][diagrams/mounting-points.pdf]
+
+\SlideTitle {Командный интерфейс}
+\startitemize
+\item Монтирование:
+\starttyping
+$ mount -t ext4 /dev/sda1 /mnt
+\stoptyping
+\item Аргументы: тип (ext4), что (раздел /dev/sda1), куда (/mnt).
+\item Демонтирование:
+\starttyping
+$ umount /mnt
+\stoptyping
+\item Отображение точек монтирования:
+\starttyping
+$ mount
+/dev/sda1 on / type ext4 (rw,noatime,data=ordered)
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+devpts on /dev/pts type devpts (rw,relatime,gid=5,mode=620,ptmxmode=000)
+sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime)
+\stoptyping
+\stopitemize
+
+\SlideTitle {Преимущества монтируемых файловых систем}
+\startitemize
+\item Косметика: отображение файловых систем на жестких дисках в произвольных
+точках дерева файлов по вкусу администратора.
+\item Более глубокое преимущество - отвязка дерева файлов от физического
+носителя данных, \quote{виртуализация} файловой системы.
+\item Файловая система может предоставлять доступ внутренним объектам ядра
+Linux в целях конфигурирования, мониторинга и диагностики.
+\item Файловая система может предоставлять доступ к внешним ресурсам:
+FTP-сервер, проект в системе контроля версий git, база данных SQL.
+\item Для приложений виртуальная ФС выглядит как обычное (почти) дерево файлов.
+\stopitemize
+
+\SlideTitle {Виртуальные ФС proc и tmpfs}
+\startitemize
+\item proc предоставляет доступ к информации о процессах и общей информации о системе.
+\item Многие утилиты используют proc. Например, утилита ps:
+\starttyping
+$ ps -A
+PID TTY          TIME CMD
+  1 ?        00:00:03 init
+  2 ?        00:00:00 kthreadd
+  3 ?        00:00:00 ksoftirqd/0
+\stoptyping
+\item tmpfs представляет часть оперативной памяти в виде файловой системы.
+\item tmpfs используется для временных файлов, которые не должны сохранятся при
+перезапуске системы, а также в случаях, когда нужен очень быстрый обмен данными
+через файлы.
+\stopitemize
+
+\SlideTitle {Открытый файл и файловый дескриптор}
+\IncludePicture[horizontal][diagrams/open-files.pdf]
+
+\SlideTitle {Низкоуровневый API}
+\starttyping
+int fd;
+char string[] = "sdfgsdfg";
+int ret;
+
+/* int open(const char *pathname, int flags); */
+fd = open("/dir1/dir2/file1", O_WRONLY | O_TRUNC);
+if (fd < 0) {
+	printf("open failed: %d\n", strerror(errno));
+	goto on_error;
+}
+
+/* ssize_t write(int fd, const void *buf, size_t count); */
+ret = write(fd, write_buffer, strlen(string));
+if (ret < 0) {
+	printf("write failed: %d\n", strerror(errno));
+	goto on_error;
+}
+
+close(fd);
+\stoptyping
+
+\SlideTitle {Дескрипторы, замечания}
+\startitemize
+\item API: open(), close(), write(), read().
+\item Флаги {\tt O_RDONLY}, {\tt O_WRONLY}, {\tt O_RDWR} открывают на чтение,
+на запись, на чтение и запись.
+\item Флаг {\tt O_TRUNC} удаляет имеющееся содержимое файла.
+\item Флаги можно объединять операцией побитового или {\tt \|}.
+\item Обычно у процесса при запуске уже созданы дескрипторы 0, 1 и 2.
+\stopitemize
+
+\SlideTitle {Потоки ввода-вывода}
+\IncludePicture[horizontal][diagrams/io-streams.pdf]
+
+\SlideTitle {Более высокоуровневый API}
+\starttyping
+FILE *fp;
+char string1[] = "sdfgsdfg";
+char string2[] = "32342";
+
+/* FILE *fopen (const char *path, const char *mode); */
+fp = fopen("/dir1/dir2/file1", "w");
+if (!fp) {
+	printf("fopen failed: %d\n", strerror(errno));
+	goto on_error;
+}
+
+/* size_t fwrite (const void *ptr, size_t size, size_t nmemb, FILE *stream); */
+fwrite(string1, 1, strlen(string1), fp);
+fwrite(string2, 1, strlen(string2), fp);
+
+fclose(fp);
+\stoptyping
+
+\SlideTitle {Исключительные ситуации}
+\starttyping
+FILE *fp_in, *fp_out;
+char buf[128];
+size_t sz;
+
+/*
+ * Открытие файлов.
+ *  .......
+ */
+
+/* size_t fread (void *ptr, size_t size, size_t nmemb, FILE *stream); */
+while (1) {
+	sz = fread(buf, 1, sizeof(buf), fp_in);
+	fwrite(buf, 1, sz, fp_out);
+
+	/* fread()/fwrite() _не_ возвращают -1 в случае ошибки. */
+	if (ferror(fp_in) || ferror(fp_out))
+		goto on_error;
+	if (feof(fp_in))
+		break;
+}
+\stoptyping
+
+\SlideTitle {Буферизация}
+\IncludePicture[horizontal][diagrams/io-buffering.pdf]
+
+\SlideTitle {Потоки, замечания}
+\startitemize
+\item Буферизация данных на чтение и запись.
+\item Более удобный API.
+\item {\tt fprintf()} - форматированный вывод в указанный поток.
+\item {\tt fgets()} - чтение строки (последовательность, оканчивающаяся на
+'\textbackslash n') из указанного потока.
+\item Каждый поток однозначно соответствует дескриптору. {\tt fdopen()} создает
+поток из дескриптора.
+\item Стандартные потоки ввода (stdin), вывода (stdout) и ошибок создаются из
+дескрипторов 0, 1 и 2 при запуске процесса.
+\stopitemize
+
+\SlideTitle {Конвейер (pipe)}
+\IncludePicture[horizontal][diagrams/pipe.pdf]
+
+\SlideTitle {Использование pipe из shell}
+Команда
+\starttyping
+prog1 | prog2
+\stoptyping
+подключает дескриптор 1 (вывод) программы prog1 к дескриптору 0 (ввод)
+программы prog2 через конвейер. prog1 и prog2 не знают о существовании
+конвейера.
+
+Примеры:
+
+{\tt 'cat students.txt \| grep Маша'} выводит только строки с указанным именем
+в терминал.
+
+{\tt 'cat students.txt \| sed s/Маша/Даша/'} производит замену имени и выводит
+результат в терминал.
+
+{\tt 'cat students.txt \| wc -l'}  подсчитывает количество строк в файле.
+
+\\
+
+Конвейер может иметь произвольную длину:
+\starttyping
+prog1 | prog2 | prog3 | prog4 | ...
+\stoptyping
+
+\SlideTitle {Управление потоками ввода-вывода}
+\IncludePicture[horizontal][diagrams/data-redirection.pdf]
+
+\SlideTitle {Перенаправление в shell}
+Команда
+\starttyping
+prog1 < file1 > file2
+\stoptyping
+подключает дескриптор 0 (ввод) программы prog1 к файлу file1, а дескриптор 1
+(вывод) - к файлу file2. prog1 не знает о перенаправлении.
+
+{\tt 'grep Маша < students.txt > output.txt'} ищет строки с указанным именем в
+файле students.txt и записывает их в файл output.txt.
+
+\SlideTitle {Применение принципов разработки ОС Unix}
+\startitemize
+\item Программы принимают на вход и передают на выход текстовые потоки.
+\item Система предоставляет набор инструментов (утилит) для решения
+элементарных задач.
+\item Сложные задачи решаются связыванием нескольких утилит через файлы и
+конвейеры.
+\item Система предоставляет утилиты-фильтры для обработки потоков между
+приложениями: поиск (grep), замена(sed) и т.д.
+\item shell является универсальным клеем. Отдельные команды объединяются в
+скрипты.
+\stopitemize
+
+\SlideTitle {Шаблоны поиска (glob pattern)}
+Пример:
+\starttyping
+$ ls *.pd?
+data-redirection.pdf  file-hierarchy.pdf
+\stoptyping
+\startitemize
+\item shell автоматически подменяет шаблон на последовательность
+соответствующих имен.
+\item Специальному символу {\tt *} соответствует любая последовательность
+обычных символов (в т.ч. последовательность длины 0).
+\item Специальному символу {\tt ?} соответствует любой один обычный символ.
+\item Специальные символы могут использоваться в одном шаблоне произвольное
+число раз.
+\stopitemize
+
+\stopcomponent
