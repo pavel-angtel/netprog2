@@ -1,0 +1,103 @@
+
+\startcomponent class-task
+\environment practice-env
+
+\subsection{Упражнения к теме \quote{Файлы и файловые дескрипторы}}
+
+\startitemize[n]
+\item Выведите текущий каталог:
+\starttyping
+$ pwd
+\stoptyping
+\item Перейдите в каталог {\tt /usr/lib} с использованием абсолютного пути:
+\starttyping
+$ cd /usr/lib
+\stoptyping
+\item Перейдите в каталог {\tt /home/root} с использованием относительного пути:
+\starttyping
+$ cd ../../home/root
+\stoptyping
+\item Создайте файл {\tt file1}:
+\starttyping
+$ touch file1
+\stoptyping
+\item Выведите метаданные этого файла:
+\starttyping
+$ ls -l file1
+\stoptyping
+\item Повторите команду {\tt touch}. Что изменилось в метаданных?
+\item Попробуйте запустить файл {\tt file1}:
+\starttyping
+$ ./file1
+\stoptyping
+Почему ядро отказалось исполнять его?
+\item Разрешите исполнение файла для "остальных" пользователей:
+\starttyping
+$ chmod 645 ./file1
+\stoptyping
+Можно ли его исполнить теперь?
+\item Разрешите исполнение файла для владельца файла. Убедитесь в том, что
+теперь файл исполняется.
+\item Выведите метаданные для файлов {\tt /dev/tty1} и {\tt /dev/sda1}. Какой
+файл является символьным, а какой блочным? Какие старшие и младшие номера
+устройств?
+\item Удалите файл:
+\starttyping
+$ rm ./file1
+\stoptyping
+\item Выведите текст в терминал с помощью команды {\tt echo}:
+\starttyping
+$ echo 123
+\stoptyping
+\item Выведите текст в терминал с использованием управляющих
+последовательностей \backslash b и \backslash n:
+\starttyping
+$ echo aaa\\nbbb
+$ echo aaa\\bccc
+\stoptyping
+Замечание. shell удаляет обратную косую черту из аргументов команды. Чтобы
+передать одну косую черту в команду echo, ее необходимо ввести дважды. В
+домашнем задании двойную косую черту использовать не нужно.
+\item Запишите произвольный текст в файл students с помощью перенаправления
+вывода:
+\starttyping
+$ echo aaa > students
+\stoptyping
+\item Убедитесь в том, что каждая последующая команда {\tt echo} очищает
+существующий файл перед выводом.
+\item Использую управляющую последовательность \backslash n, создайте файл {\tt
+students}, содержащий строки Masha, Sasha, Vika.
+\item Выведите содержимое файла:
+\starttyping
+$ cat ./students
+\stoptyping
+\item Подключите к выводу {\tt cat} программу поиска текста {\tt grep} с помощью
+конвейера:
+\starttyping
+$ cat ./students | grep asha
+\stoptyping
+\item Подключите к выводу {\tt grep} потоковый текстовый редактор {\tt sed} и
+замените слово Masha на Dasha:
+\starttyping
+$ cat ./students | sed s/Masha/Dasha/g
+\stoptyping
+\item Используя утилиты-фильтры {\tt grep} и {\tt sed}, создайте на основе
+students новый файл students2, содержащий только имена с суффиксом \quote{asha}
+и в котором маленькие буквы \quote{a} заменены на большие \quote{A}.
+\item Перейдите в каталог {\tt /dev}. Далее использую shell-шаблоны, выведите список 
+файлов с префиксом {\tt tty}:
+\starttyping
+$ ls tty*
+\stoptyping
+\item Объясните вывод следующих команд:
+\starttyping
+$ ls tty4*
+$ ls *4*
+$ ls tty49*
+$ ls tty49?
+$ ls tty4?
+\stoptyping
+
+\stopitemize
+
+\stopcomponent

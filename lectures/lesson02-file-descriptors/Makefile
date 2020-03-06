@@ -1,5 +1,5 @@
 
-DOCS = file-descriptors-slides
+DOCS = file-descriptors-slides class-task
 DIAGRAMS = \
 	   diagrams/data-redirection.pdf \
 	   diagrams/disks-volumes.pdf \
