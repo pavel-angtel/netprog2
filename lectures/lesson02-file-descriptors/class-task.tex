@@ -25,7 +25,11 @@ $ touch file1
 \starttyping
 $ ls -l file1
 \stoptyping
-\item Повторите команду {\tt touch}. Что изменилось в метаданных?
+\item Выведите метаданные с точным временем последнего изменения:
+\starttyping
+$ ls --full-time file1
+\stoptyping
+\item Повторите команду {\tt touch file1}. Что изменилось в метаданных?
 \item Попробуйте запустить файл {\tt file1}:
 \starttyping
 $ ./file1
@@ -52,8 +56,8 @@ $ echo 123
 \item Выведите текст в терминал с использованием управляющих
 последовательностей \backslash b и \backslash n:
 \starttyping
-$ echo aaa\\nbbb
-$ echo aaa\\bccc
+$ echo -e aaa\\nbbb
+$ echo -e aaa\\bccc
 \stoptyping
 Замечание. shell удаляет обратную косую черту из аргументов команды. Чтобы
 передать одну косую черту в команду echo, ее необходимо ввести дважды. В
@@ -63,8 +67,8 @@ $ echo aaa\\bccc
 \starttyping
 $ echo aaa > students
 \stoptyping
-\item Убедитесь в том, что каждая последующая команда {\tt echo} очищает
-существующий файл перед выводом.
+\item Убедитесь в том, что каждая последующая команда {\tt echo} перезаписывает
+содержимое файла.
 \item Использую управляющую последовательность \backslash n, создайте файл {\tt
 students}, содержащий строки Masha, Sasha, Vika.
 \item Выведите содержимое файла:
@@ -84,6 +88,11 @@ $ cat ./students | sed s/Masha/Dasha/g
 \item Используя утилиты-фильтры {\tt grep} и {\tt sed}, создайте на основе
 students новый файл students2, содержащий только имена с суффиксом \quote{asha}
 и в котором маленькие буквы \quote{a} заменены на большие \quote{A}.
+\item Удалите созданные файлы:
+\starttyping
+$ rm ./students
+$ rm ./students2
+\stoptyping
 \item Перейдите в каталог {\tt /dev}. Далее использую shell-шаблоны, выведите список 
 файлов с префиксом {\tt tty}:
 \starttyping
