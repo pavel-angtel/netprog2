@@ -10,6 +10,7 @@ DIAGRAMS = \
 	   diagrams/mounting-points.pdf \
 	   diagrams/open-files.pdf \
 	   diagrams/pipe.pdf \
-	   diagrams/td-bu.pdf
+	   diagrams/td-bu.pdf \
+	   diagrams/proc.pdf
 
 include ../Makefile.common

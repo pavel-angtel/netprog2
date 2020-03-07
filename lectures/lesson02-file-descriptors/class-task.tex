@@ -7,37 +7,37 @@
 \startitemize[n]
 \item Выведите текущий каталог:
 \starttyping
-$ pwd
+# pwd
 \stoptyping
 \item Перейдите в каталог {\tt /usr/lib} с использованием абсолютного пути:
 \starttyping
-$ cd /usr/lib
+# cd /usr/lib
 \stoptyping
 \item Перейдите в каталог {\tt /home/root} с использованием относительного пути:
 \starttyping
-$ cd ../../home/root
+# cd ../../home/root
 \stoptyping
 \item Создайте файл {\tt file1}:
 \starttyping
-$ touch file1
+# touch file1
 \stoptyping
 \item Выведите метаданные этого файла:
 \starttyping
-$ ls -l file1
+# ls -l file1
 \stoptyping
 \item Выведите метаданные с точным временем последнего изменения:
 \starttyping
-$ ls --full-time file1
+# ls --full-time file1
 \stoptyping
 \item Повторите команду {\tt touch file1}. Что изменилось в метаданных?
 \item Попробуйте запустить файл {\tt file1}:
 \starttyping
-$ ./file1
+# ./file1
 \stoptyping
 Почему ядро отказалось исполнять его?
 \item Разрешите исполнение файла для "остальных" пользователей:
 \starttyping
-$ chmod 645 ./file1
+# chmod 645 ./file1
 \stoptyping
 Можно ли его исполнить теперь?
 \item Разрешите исполнение файла для владельца файла. Убедитесь в том, что
@@ -47,17 +47,38 @@ $ chmod 645 ./file1
 устройств?
 \item Удалите файл:
 \starttyping
-$ rm ./file1
+# rm ./file1
 \stoptyping
+\item Выведите список текущих точек монитирования:
+\starttyping
+# mount
+\stoptyping
+Какая файловая система (тип и устройство) примонтирована к корню дерева (/)?
+\item Выведите список запущенных процессов:
+\starttyping
+# ps -A
+\stoptyping
+В левом столбце указан номер каждого процесса.
+\item Выберите один из процессов и по его номеру найдите соответствующую папку
+в виртуальной файловой системе proc:
+\starttyping
+# ls /proc/<id>
+\stoptyping
+\item Выведите имя команды и статус выбранного процесса:
+\starttyping
+# cat /proc/<id>/comm
+# cat /proc/<id>/status
+\stoptyping
+В каком состоянии (State) находится процесс?
 \item Выведите текст в терминал с помощью команды {\tt echo}:
 \starttyping
-$ echo 123
+# echo 123
 \stoptyping
 \item Выведите текст в терминал с использованием управляющих
 последовательностей \backslash b и \backslash n:
 \starttyping
-$ echo -e aaa\\nbbb
-$ echo -e aaa\\bccc
+# echo -e aaa\\nbbb
+# echo -e aaa\\bccc
 \stoptyping
 Замечание. shell удаляет обратную косую черту из аргументов команды. Чтобы
 передать одну косую черту в команду echo, ее необходимо ввести дважды. В
@@ -65,7 +86,7 @@ $ echo -e aaa\\bccc
 \item Запишите произвольный текст в файл students с помощью перенаправления
 вывода:
 \starttyping
-$ echo aaa > students
+# echo aaa > students
 \stoptyping
 \item Убедитесь в том, что каждая последующая команда {\tt echo} перезаписывает
 содержимое файла.
@@ -73,38 +94,38 @@ $ echo aaa > students
 students}, содержащий строки Masha, Sasha, Vika.
 \item Выведите содержимое файла:
 \starttyping
-$ cat ./students
+# cat ./students
 \stoptyping
 \item Подключите к выводу {\tt cat} программу поиска текста {\tt grep} с помощью
 конвейера:
 \starttyping
-$ cat ./students | grep asha
+# cat ./students | grep asha
 \stoptyping
 \item Подключите к выводу {\tt grep} потоковый текстовый редактор {\tt sed} и
 замените слово Masha на Dasha:
 \starttyping
-$ cat ./students | sed s/Masha/Dasha/g
+# cat ./students | sed s/Masha/Dasha/g
 \stoptyping
 \item Используя утилиты-фильтры {\tt grep} и {\tt sed}, создайте на основе
 students новый файл students2, содержащий только имена с суффиксом \quote{asha}
 и в котором маленькие буквы \quote{a} заменены на большие \quote{A}.
 \item Удалите созданные файлы:
 \starttyping
-$ rm ./students
-$ rm ./students2
+# rm ./students
+# rm ./students2
 \stoptyping
 \item Перейдите в каталог {\tt /dev}. Далее использую shell-шаблоны, выведите список 
 файлов с префиксом {\tt tty}:
 \starttyping
-$ ls tty*
+# ls tty*
 \stoptyping
 \item Объясните вывод следующих команд:
 \starttyping
-$ ls tty4*
-$ ls *4*
-$ ls tty49*
-$ ls tty49?
-$ ls tty4?
+# ls tty4*
+# ls *4*
+# ls tty49*
+# ls tty49?
+# ls tty4?
 \stoptyping
 
 \stopitemize
