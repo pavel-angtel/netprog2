@@ -1,0 +1,354 @@
+
+\startcomponent unix-processes-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Состояния процесса}
+Основные состояния:
+\startitemize
+\item {\tt TASK_RUNNING} (буква {\tt R} в выводе {\tt ps}) - процесс готов к
+исполнению на процессоре,
+\item {\tt TASK_INTERRUPTIBLE} ({\tt S}) - прерываемое ожидание события,
+\item {\tt TASK_UNINTERRUPTIBLE} ({\tt D}) - непрерываемое ожидание события.
+\stopitemize
+
+Независимо от состояния процесс может в текущий момент исполняться в
+\startitemize
+\item пространстве ядра (kernel space) или
+\item пространстве пользователя (user space).
+\stopitemize
+
+\SlideTitle {Переход между состояниями}
+\IncludePicture[horizontal][diagrams/process-states.pdf]
+
+\SlideTitle {Планировщик процессов}
+\IncludePicture[horizontal][diagrams/scheduler.pdf]
+
+\SlideTitle {Вытесняющая многозадачность}
+Когда процесс перестает исполняться:
+\startitemize
+\item процесс запрашивает у ядра задержку (например, {\tt sleep()}),
+\item процесс ожидает завершения операции ввода-вывода (например, {\tt
+read()}),
+\item у процесса заканчивается доля времени, выделенная планировщиком,
+\item в системе появляется более приоритетный процесс.
+\stopitemize
+
+Блокирующий (системный) вызов - вызов, который переводит процесс в состояние
+ожидания до завершения операции ввода-вывода. Примеры: {\tt read()}, {\tt
+write()}.
+
+\SlideTitle {Планирование отложенных действий}
+\IncludePicture[horizontal][diagrams/delayed-actions.pdf]
+
+\SlideTitle {Программное окружение процесса}
+\IncludePicture[horizontal][diagrams/process-environment.pdf]
+
+\SlideTitle {Создание процесса}
+\IncludePicture[horizontal][diagrams/process-forking.pdf]
+
+\SlideTitle {Copy on write}
+\IncludePicture[horizontal][diagrams/cow.pdf]
+
+\SlideTitle {Создание процесса, API}
+\starttyping
+	pid_t pid;
+
+	pid = fork();
+	if (pid < 0)
+		goto on_error;
+
+	/* В этой точке исполняется 2 процесса. */
+	
+	if (pid == 0) {
+		/* Дочерний процесс. */
+	} else {
+		/* Родительский процесс. */
+	}
+\stoptyping
+
+\SlideTitle {Запуск приложения}
+\IncludePicture[horizontal][diagrams/execution.pdf]
+
+\SlideTitle {Запуск приложения, API}
+\starttyping
+	char *argv[] = {"/bin/cat", "/home/root/file1", NULL};
+	int ret;
+
+	/* int execvp (const char *file, char *const argv[]); */
+	ret = execvp(argv[0], argv);
+
+	/* В случае успеха программа не возвращается из execvp. */
+
+	goto on_error;
+
+\stoptyping
+
+\SlideTitle {Преимущество раздельного подхода}
+
+\starttyping
+	pid_t pid;
+
+	pid = fork();
+
+	if (pid == 0) {
+		/* Дочерний процесс. */
+
+		char *argv[] = {"/bin/cat", "/home/root/file1", NULL};
+
+		/* .....
+		 * Формирование программного окружения нового процесса:
+		 * перенаправление в файл,
+		 * создание конвейера (pipe),
+		 * открытие устройства ввода-вывода и др.
+		 * /
+
+		execvp(argv[0], argv);
+	}
+\stoptyping
+
+\SlideTitle {Конвейер в shell}
+\IncludePicture[horizontal][diagrams/environment-modification.pdf]
+
+\SlideTitle {Завершение процесса}
+Возможные причины завершения процесса.
+\startitemize
+\item Вызов функции {\tt exit()} самим процессом, в том числе в результате
+выхода из функции {\tt main()}.
+\item Получение {\em сигнала} от ядра или другого процесса.
+\stopitemize
+
+Сигнал - специальный механизм межпроцессного взаимодействия. Обычно
+используется для управления жизненным циклом процесса.
+
+Примеры сигналов:
+\startitemize
+\item нажатие {\tt Ctrl+C} в терминале отправляет сигнал SIGINT активному
+процессу,
+\item недопустимое обращение к памяти приводит к отправке сигнала SIGSEGV,
+\item исполнение недопустимой машинной инструкции приводит к отправке сигнала
+SIGILL.
+\stopitemize
+
+\SlideTitle {Ожидание завершения, процессы-зомби}
+\IncludePicture[horizontal][diagrams/waitpid.pdf]
+
+\SlideTitle {Ожидание завершения, API}
+\starttyping
+	pid_t pid;
+	int child_status;
+
+	/* pid_t waitpid(pid_t pid, int *status, int options);
+	 * Если pid равен -1, функция будет следить за всеми дочерними процессами.
+	 * Если опции не заданы, функция будет ждать завершения
+	 * одного из дочерних процессов.
+	 * Если задана опция WNOHANG, функция завершится сразу.
+	 */
+
+	pid = waitpid(-1, &child_status, WNOHANG);
+	if (pid == 0) {
+		/* Все дочерние процессы продолжают работать. */
+		return;
+	}
+	if (WIFEXITED(child_status))
+		printf("Процесс %d завершился со статусом %d\n",
+		       pid, WEXITSTATUS(child_status));
+	else if (WIFSIGNALED(child_status))
+		printf("Процесс %d был прерван сигналом %d\n",
+		       pid, WTERMSIG(child_status));
+\stoptyping
+
+\SlideTitle {Сигналы, определение, типы}
+
+Сигнал - механизм межпроцессного взаимодействия, который прерывает нормальное
+исполнение процесса для выполнения {\em обработчика сигнала}.
+
+Назначение некоторых важных сигналов:
+\startitemize
+\item SIGTERM - завершение процесса по запросу другого процесса с
+освобождением всех выделенных ресурсов,
+\item SIGKILL - немедленное завершение процесса,
+\item SIGINT - завершение процесса со стороны управляющего терминала,
+\item SIGSEGV, SIGILL, SIGABRT - завершение процесса в результате некорректных
+действий самого процесса,
+\item SIGCHLD - оповещение о событии в дочернем процессе.
+\stopitemize
+
+\SlideTitle {Жизненный цикл сигналов}
+\IncludePicture[horizontal][diagrams/signal-lifecycle.pdf]
+
+\SlideTitle {Доставка сигналов}
+\IncludePicture[horizontal][diagrams/signal-delivery.pdf]
+
+\SlideTitle {Отправка сигналов через shell}
+Процесс запускается в фоновом режиме с помощью символа {\tt &}.
+\starttyping
+$ sleep 100 &
+[1] 7584
+$ ps -A | grep sleep
+ 7584 pts/42   00:00:00 sleep
+$ kill 7584
+$
+[1]+  Complété              sleep 100
+\stoptyping
+
+\SlideTitle {Отправка сигналов, API}
+\starttyping
+	pid_t pid;
+
+	pid = fork();
+
+	if (pid > 0) {
+		int child_status;
+		/* Родительский процесс. */
+
+		/* Отправка сигнала SIGTERM дочернему процессу. */
+		kill(pid, SIGTERM);
+
+		/* Ожидание завершения дочернего процесса. */
+		waitpid(pid, &child_status, 0);
+	}
+\stoptyping
+
+\SlideTitle {Обработчики сигналов}
+
+У всех сигналов есть обработчик по умолчанию:
+\startitemize
+\item SIGTERM, SIGKILL, SIGINT - процесс немедленно завершается,
+\item SIGCHLD - сигнал игнорируется.
+\stopitemize
+
+Многие сигналы могут быть перехвачены процессом за счет регистрации своего
+специального обработчика. Некоторые сигналы (например, SIGKILL) не
+перехватываются.
+
+Обработчик сигнала - функция на C. Но не все функции можно использовать в
+обработчике сигналов.
+
+\SlideTitle {Обработчики сигналов, API}
+\starttyping
+static void sigterm_handler(int sig)
+{
+	char *text = "Обрабатываю сигнал SIGTERM\n";
+	write(1, text, strlen(text));
+}
+
+int main(int argc, char *argv[])
+{
+	struct sigaction sa;
+
+	sa.sa_handler = sigterm_handler;
+
+	/* int sigaction(int sig, const struct sigaction *act,
+	                          struct sigaction *old_act); */
+	sigaction(SIGTERM, &sa, NULL);
+}
+\stoptyping
+
+\SlideTitle {Реентерабельные функции}
+Не допускает повторное вхождение:
+\starttyping
+int t;
+
+void swap(int *x, int *y)
+{
+	t = *x;
+	*x = *y;
+	*y = t;
+}
+\stoptyping
+
+Допускает повторное вхождение:
+\starttyping
+void swap(int *x, int *y)
+{
+	int t;
+	t = *x;
+	*x = *y;
+	*y = t;
+}
+\stoptyping
+
+\SlideTitle {Сигналы, повторные вхождения}
+\starttyping
+static void sigterm_handler(int sig)
+{
+	/* Повторное вхождение в функцию printf нарушает внутреннее состояние
+	потока вывода stdout. */
+	printf("Обрабатываю сигнал SIGTERM\n");
+}
+
+int main(int argc, char *argv[])
+{
+	struct sigaction sa;
+
+	sa.sa_handler = sigterm_handler;
+
+	sigaction(SIGTERM, &sa, NULL);
+
+	/* Функция printf() выполняет вывод данных через системные вызовы
+	write(). Один из вызовов прерывается сигналом SIGTERM. */
+	printf("Hello world\n");
+}
+\stoptyping
+
+\SlideTitle {Отложенная обработка сигналов, код EINTR}
+\starttyping
+bool something_happened;
+
+static void signal_handler(int sig)
+{
+	something_happened = true;
+}
+
+static int deferred_handler(void) {}
+
+int main(int argc, char *argv[])
+{
+	/* ... Регистрация обработчика signal_handler(). */
+
+	while (1) {
+		char buf[100];
+		int ret;
+
+		ret = read(STDIN_FILENO, buf, sizeof(buf));
+		if (ret < 0 && errno == EINTR) {
+			deferred_handler();
+		}
+	}
+}
+\stoptyping
+
+\SlideTitle {Ожидание завершения дочернего процесса}
+Возможности.
+\startitemize
+\item Вызов {\tt waitpid()} без опции {\tt WNOHANG} - функция выполняется до
+изменения состояния указанного процесса, блокируя решение других задач.
+\item Обработка сигнала SIGCHLD - сигнал отправляется родительскому процессу в
+случае завершения дочернего процесса.
+\stopitemize
+
+Как обрабатывать SIGCHLD.
+\startitemize
+\item Проверить статус всех дочерних процессов с помощью {\tt waitpid()}.
+\item Опция {\tt WNOHANG} не используется.
+\item Необходимо иметь в виду, что несколько отправленных сигналов могут
+сливаться в один полученный сигнал, т.е. по одному сигналу SIGCHLD может
+завершиться несколько дочерних процессов.
+\stopitemize
+\SlideTitle {Наследование программного окружения}
+\IncludePicture[horizontal][diagrams/inheritance.pdf]
+
+\SlideTitle {init}
+\IncludePicture[horizontal][diagrams/init.pdf]
+
+\SlideTitle {Демоны (daemons)}
+\IncludePicture[horizontal][diagrams/daemons.pdf]
+
+\stopcomponent
