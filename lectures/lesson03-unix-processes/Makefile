@@ -1,5 +1,5 @@
 
-DOCS = unix-processes-slides
+DOCS = unix-processes-slides class-task
 DIAGRAMS = \
 	   diagrams/cow.pdf \
 	   diagrams/daemons.pdf \

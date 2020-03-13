@@ -1,0 +1,54 @@
+
+\startcomponent class-task
+\environment practice-env
+
+\subsection{Упражнения к теме \quote{Процессы ОС Linux}}
+
+\startitemize[n]
+\item Скопируйте каталог class-task-templates в общуу папку виртуальной машины.
+\item Написать программу {\tt fork-process}, которая создает дочерний процесс и
+дожидается его завершения. Дочерний процесс выводит свой PID и завершается с
+кодом 5. Родительский процесс выводит свой PID, а также причину завершения
+дочернего процесса, код завершения или сигнала, приведшего к завершению.
+\item Запустите {\tt fork-process}:
+\starttyping
+# ./fork-process
+parent PID: 9108
+child PID: 9109
+Child exited with status 5
+\stoptyping
+\item Увеличьте время жизни дочернего процесса с помощью функции {\tt sleep()}.
+Запустите {\tt fork-process} и завершите его с помощью сигнала {\tt SIGTERM},
+указав соответствующий PID процесса:
+\starttyping
+# ./fork-process &
+# kill <PID>
+Child was terminated by signal 15
+\stoptyping
+\item Напишите программу {\tt catch-signal}, которая перехватывает сигналы {\tt
+SIGTERM}, {\tt SIGKILL}, {\tt SIGINT}, {\tt SIGCHLD}. В функции {\tt main()}
+программа реализует бесконечный цикл чтения из терминала, который прерывается
+доставкой сигнала. После каждого прерывания программа выводит имена сигналов,
+прервавших программу.
+\item Запустите программу {\tt catch-signal} и отправьте ей сигнал {\tt SIGINT}
+с помощью комбинации Ctrl+C:
+\starttyping
+# ./catch-signal
+^C
+Interrupted: sigterm 0, sigkill 0, sigint 1, sigchld 0
+\stoptyping
+\item Завершите catch-signal из другого терминала:
+\starttyping
+# pkill -9 catch-signal
+\stoptyping
+\item Запустите программу {\tt catch-signal} и отправьте ей сигналы {\tt
+SIGTERM} и {\tt SIGCHLD}:
+\starttyping
+# ./catch-signal &
+# pkill -SIGTERM catch-signal
+Interrupted: sigterm 1, sigkill 0, sigint 0, sigchld 0
+\stoptyping
+\item Удалите каталог class-task-templates из общей папки.
+\stopitemize
+
+\stopcomponent
