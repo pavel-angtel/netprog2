@@ -9,165 +9,420 @@
   ]
 \placeTitle
 
-\SlideTitle {Сетевые сокеты}
+\SlideTitle {Компьютерные сети}
+\IncludePicture[horizontal][diagrams/network.pdf]
+
+\SlideTitle {Локальная сеть Ethernet}
+\startitemize
+\item Локальная сеть Ethernet состоит из конечных узлов, соединенных
+коммутаторами.
+\item Сеть передает Ethernet-кадры.
+\item Каждый конечный узел имеет уникальный MAC-адрес. Пример:
+68:eb:c5:00:01:82.
+\item Простота - не требуются протоколы маршрутизации для доставки кадров.
+\item Адресат кадра обнаруживается с помощью широковещательных рассылок.
+\item Множество сред передачи: медь, оптика, радио.
+\stopitemize
+
+\SlideTitle {Заголовок Ethernet-кадра}
+\IncludePicture[horizontal][diagrams/ethernet-header.pdf]
+
+\SlideTitle {Глобальная сеть IP}
+\startitemize
+\item Глобальная сеть IP состоит из локальных сетей, соединенных маршрутизаторами.
+\item Сеть передает IP-дейтаграммы.
+\item Каждый конечный узел имеет уникальный IP-адрес. Пример: 64.233.162.113.
+\item Глобальные широковещательные рассылки запрещены.
+\item Требуются протоколы маршрутизации для нахождения адресата.
+\item Для передачи по локальной сети используется Ethernet или аналогичная
+технология.
+\stopitemize
+
+Перевод из сетевого порядка в процессорный (network to host):
+\starttyping
+processor_int = htonl(network_int);
+processor_short = htons(network_short);
+\stoptyping
+
+\SlideTitle {Заголовок IP-дейтаграммы}
+\IncludePicture[horizontal][diagrams/ip-header.png]
+
+\SlideTitle {Инкапсуляция}
+\IncludePicture[horizontal][diagrams/encapsulation.png]
+
+\SlideTitle {Проблемы сетей Ethernet/IP}
+\startitemize
+\item Возможна потеря пакетов из-за помех в среде передачи или переполнения
+буферов коммутаторов/маршрутизаторов.
+\item Возможно изменение порядка пакетов при передаче из-за переходных
+процессов при изменении таблиц маршрутизации.
+\item Отсутствие гарантий по максимально возможной задержке доставки.
+\stopitemize
+
+\SlideTitle {Повторная отправка пакета}
+\IncludePicture[horizontal][diagrams/sequence-numbering.pdf]
+
+\SlideTitle {Протокол TCP}
+\startitemize
+\item Протокол соединяет удаленные приложения.
+\item Приложение идентифицируется номером порта (числа от 1 до 65535).
+\item Сообщения протокола называются {\em сегментами}.
+\item Каждый передаваемый байт нумеруется. Принимающая сторона должна
+подтвердить прием отправкой ACK. При отсутствии подтверждения выполняется
+повторная отправка.
+\item Передача данных требует установки соединения для синхронизации ожидаемых
+номеров байтов.
+\stopitemize
+
+\SlideTitle {Установка соединения}
+\IncludePicture[horizontal][diagrams/tcp-connection.pdf]
+
+\SlideTitle {Особенности TCP}
+\startitemize
+\item Протокол передает поток данных, разбитый на {\em сегменты}. Сохранение
+границ сегментов не гарантируется.
+\item Типичные приложения: передача файлов (FTP), удаленный терминал (SSH),
+передача почтовых сообщений (SMTP).
+\item Повторная отправка может значительно увеличивать время доставки.
+\item Повторная отправка съедает пропускную способность сети. При наличии
+множества потоков требуется ограничивать скорость передачи сообщений.
+\stopitemize
+
+\SlideTitle {Границы сегмента}
+\IncludePicture[horizontal][diagrams/segment-boundaries.pdf]
+
+\SlideTitle {4-уровневая модель сетевого взаимодействия}
+\IncludePicture[horizontal][diagrams/4-layer-model.pdf]
+
+\SlideTitle {4-уровневая модель, реализация}
+\IncludePicture[horizontal][diagrams/4-layer-model-implementation.pdf]
+
+\SlideTitle {Сокеты}
+\starttyping
+int sock_fd;
+
+/* int socket(int domain, int type, int protocol); */
+sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+if (sock_fd < 0)
+	goto on_error;
+\stoptyping
+
+\startitemize
+\item {\tt domain} - семейство адресов. {\tt AF_INET} - IPv4, {\tt AF_INET6} -
+IPv6 и др.
+\item {\tt type} - тип сокета. Обычно либо потоковый сокет ({\tt SOCK_STREAM})
+или дейтаграммный сокет ({\tt SOCK_DGRAM}).
+\item {\tt protocol} - протокол передачи данных. 0 - протокол по умолчанию. Для
+потоковых IP-сокетов протокол по умолчанию - TCP.
+\stopitemize
+
+\SlideTitle {Установка соединения, API}
 \starttyping
 int sock_fd;
 struct sockaddr_in addr;
-unsigned char txbuf[100], rxbuf[100];
+int ret;
 
-/* Инициализация addr и buf не показана. */
+addr.sin_family = AF_INET;
+/* Для номера порта и абреса используется сетевой порядок байтов! */
+add.sin_port = htons(21);
+inet_aton("127.0.0.1", &addr.sin_addr);
 
 sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
 
-write(sock_fd, txbuf, sizeof(txbuf));
-read(sock_fd, rxbuf, sizeof(rxbuf));
-
-send(sock_fd, txbuf, sizeof(txbuf), 0);
-recv(sock_fd, rxbuf, sizeof(rxbuf), 0);
-
-close(sock_fd);
+/* int connect(int sockfd, struct sockaddr *serv_addr, socklen_t addrlen); */
+ret = connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
+if (ret < 0)
+	goto on_error;
 \stoptyping
 
-\SlideTitle {Средства передачи данных между процессами}
-\IncludePicture[horizontal][diagrams/sockets.pdf]
+\SlideTitle {Передача данных, API}
 
-\SlideTitle {TCP vs UDP}
-\IncludePicture[horizontal][diagrams/tcp-udp.pdf]
-
-\SlideTitle {Пакетная и потоковая передача данных}
-\startitemize
-\item При пакетной передаче границы сообщений сохраняются.
-\item UDP обеспечивает пакетную передачу.
-\item При потоковой передаче границы сообщений не сохраняются. Возможно
-объединение исходных сообщений в одно, разбиение исходного сообщения на
-несколько, а также любая комбинация этих операций.
-\item TCP обеспечивает потоковую передачу.
-\item Зачем вообще менять границы сообщений? Для некоторых приложений границы
-не существенны (например, для передачи файла). При этом использование более
-крупных сообщений снижает нагрузку на процессоры, а более мелких сообщений
-обеспечивает передачу через локальные сети с маленьким максимальным размером
-кадра.
-\item Потоковая передача данных требует установления соединения.
-\stopitemize
-
-\SlideTitle {Что мы хотим от сетевых сокетов?}
-\startitemize
-\item Поддержка нескольких видов адресации: IP-адрес + порт для связи между
-процессами на разных компьютерах, строковые имена - между процессами на одном
-компьютере.
-\item Поддержка пакетной (с сохранением границ сообщений) и потоковой (без
-сохранения границ сообщения) передачи данных.
-\item Средства установки и разрыва соединения.
-\item Средства передачи и приема данных.
-\item Общий программный интерфейс для сетевого и не сетевого обмена.
-\item Сокрытие деталей реализации протоколов транспортного уровня в ядре
-операционной системы.
-\stopitemize
-
-\SlideTitle {Классификация сокетов}
 \starttyping
-int socket(int domain, int type, int protocol);
+int sock_fd;
+char out_buf[] = {2, 0, 2, 0};
+char in_buf[100];
+int sz;
+
+/* int send(int s, const void *buf, size_t len, int flags); */
+sz = send(sock_fd, out_buf, sizeof(out_buf), 0);
+if (sz < 0)
+	goto on_error;
+
+sz = recv(sock_fd, in_buf, sizeof(in_buf), 0);
+
+printf("Received %d bytes from socket\n", sz);
+
 \stoptyping
-\startitemize
-\item domain - семейство адресов:
 
-\startitemize
-\item AF_INET - адресом сокета является пара (IP-адрес, порт),
-\item AF_UNIX - адресом сокета является строковые имя.
-\stopitemize
+\SlideTitle {Передача данных через поток ввода-вывода}
 
-\item type - тип сокета:
-
-\startitemize
-\item SOCK_DGRAM - пакетный (дейтаграммный) сокет (сохраняет границы сообщений,
-не гарантирует доставку, допускает передачу данных без установки соединения),
-\item SOCK_STREAM - потоковый сокет (не сохраняет границы сообщений,
-гарантирует доставку, передача данных только после установки соединения).
-\stopitemize
-
-\item protocol - сетевой протокол ({\tt IPPROTO_TCP}, {\tt IPPROTO_UDP}, 0 -
-протокол по умолчанию).
-\stopitemize
-
-\SlideTitle {Программный интерфейс сокетов}
 \starttyping
-int socket(int domain, int type, int protocol);
-int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
-ssize_t send(int sockfd, const void *buf, size_t len, int flags);
-ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
-               const struct sockaddr *dest_addr, socklen_t addrlen);
-ssize_t recv(int sockfd, void *buf, size_t len, int flags);
-int close(int fd);
+int sock_fd;
+FILE *sock_stream;
+char response[100];
 
-int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+sock_stream = fdopen(sock_fd, "r+");
+if (!sock_stream)
+	goto on_error;
+
+ret = fprintf(sock_stream, "request %s %d\n", "abc", 555);
+if (ret < 0)
+	goto on_error;
+
+fflush(sock_stream);
+
+fgets(response, sizeof(response), sock_stream);
 \stoptyping
 
-\SlideTitle {Клиентские и серверные приложения}
-\startitemize
-\item Пример: Web-сервер и Web-браузер.
-\item Будем называть клиентом то приложение, которое устанавливает соединение,
-передает запросы и принимает ответы.
-\item Будем называть сервером то приложение, которое принимает соединения,
-принимает запросы и передает ответы.
-\item Сервер имеет известный публичный адрес, клиенту адрес сокета (не путать с
-IP-адресом) назначается динамически.
-\item Клиент, использующий пакетный сокет, вызывает функции {\tt sendto} и {\tt
-recv}.
-\item Клиент, использующий потоковый сокет, вызывает функции {\tt connect},
-{\tt send} и {\tt recv}.
-\item Для назначения клиентскому сокету динамического адреса используется вызов
-{\tt bind} со специальными аргументами (см. инструкцию к задаче).
-\stopitemize
-
-\SlideTitle {Адресация Unix-сокетов}
-\startitemize
-\item Адрес Unix-сокета - строковое имя. Точнее - имя файла.
-\item Виртуальный файл с таким именем существует, но данные в нем не хранятся.
-Его назначение - идентификация сокета.
-\item Адрес задается структурой типа {\tt struct sockaddr_un}:
+\SlideTitle {Протокол UDP}
+Создание сокета:
 \starttyping
-struct sockaddr_un {
-	sa_family_t sun_family;               /* AF_UNIX */
-	char        sun_path[108];            /* pathname */
-};
+sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
 \stoptyping
-\item Пример использования:
-\starttyping
-	struct sockaddr_un addr;
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", "/run/server");
 
-	connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
-\stoptyping
-\item {\tt struct sockaddr} - абстрактный адрес. Конкретные адреса ({\tt struct
-sockaddr_un} и др.) приводятся к этому типа при передаче в функцию.
-\stopitemize
-
-\SlideTitle {Прием и передача данных через Unix-сокеты}
-\starttyping
-ssize_t recv(int sockfd, void *buf, size_t len, int flags);
-\stoptyping
+Особенности.
 \startitemize
-\item Для пакетного сокета {\tt recv} всегда принимает целый пакет. Буфер
-должен быть не меньше размера принимаемого пакета. Возвращаемое значение -
-размер пакета или индикация ошибки (-1).
-\item Для потокового сокета {\tt recv} читает все имеющиеся данные,
-помещающиеся в данный буфер. Возвращаемое значение - количество прочитанный
-байтов или индикация ошибки (-1). Код 0 означает, что соединение было закрыто.
-\item {\tt recv} - блокирующая функция. Она завершится только тогда, когда
-будут прочитаны данные. Если данных нет, то исполнение приложения блокируется
-до их появления.
+\item Отсутствуют гарантии доставки.
+\item Сохраняются границы дейтаграмм при передаче через сеть.
+\item Не вносится дополнительная задержка.
+\item Адресация аналогична TCP - IP-адрес + порт.
+\item Общий API с TCP, но смысл функций ({\tt connect}, {\tt send}, {\tt recv}
+и др.) отличается.
 \stopitemize
 
-\SlideTitle {Упражнения}
+\SlideTitle {Unix-сокеты}
+Создание сокета:
+\starttyping
+sock_fd1 = socket(AF_UNIX, SOCK_STREAM, 0);
+sock_fd2 = socket(AF_UNIX, SOCK_DGRAM, 0);
+\stoptyping
+
 \startitemize
-\item Написать программу, которая отправляет учебному серверу запрос на чтение
-строки из ячейки  0, принимает ответ, содержащий эту строку, и выводит
-полученное значение в терминал. Учебный сервер хранит массив ячеек и
-обрабатывает клиентские запросы по адресу /tmp/sock_dgram_server. Клиентское
-приложение может отправлять запросы на чтение и запись значений этих ячеек.
-Протокол описан в инструкции к практическому заданию.
+\item Передача только внутри между приложениями одной ОС.
+\item Адрес приложения - строка. IP-адреса и порты не используются.
+\item Нет передачи через сеть - нет потерь, повторных отправок и т.д.
+\item Поддерживается как потоковый, так и дейтаграммный режим.
 \stopitemize
+
+\SlideTitle {Использования Unix-сокетов в Linux}
+\IncludePicture[horizontal][diagrams/unix-sockets-in-linux.pdf]
+
+\SlideTitle {Клиентские сокеты в сетевых устройствах}
+UDP-сокеты:
+\startitemize
+\item DNS - протокол получения IP-адреса из доменного имени (например,
+www.google.com или www.angtel.ru).
+\item DHCP - протокол автоматической настройки IP-адреса.
+\item NTP - протокол автоматической настройки системного времени.
+\item SNMP - отправка сообщений об изменении состояния системы.
+\stopitemize
+
+TCP-сокеты:
+\startitemize
+\item OSPF, BGP - протоколы маршрутизации.
+\item FTP - передача файлов.
+\stopitemize
+
+\SlideTitle {Протокол FTP в сетевых устройствах}
+\IncludePicture[horizontal][diagrams/ftp-usage.pdf]
+
+\SlideTitle {Протокол FTP, архитектура}
+\IncludePicture[horizontal][diagrams/ftp-architecture.pdf]
+
+\SlideTitle {Команды и ответы}
+Синтаксис команды (аргумент нужен не для всех команд):
+\starttyping
+<имя команды> <аргумент>\r\n
+\stoptyping
+Команда скачивания файла:
+\starttyping
+RETR file1\r\n
+\stoptyping
+Синтаксис ответа:
+\starttyping
+<код> <сообщение>\r\n
+\stoptyping
+Пример ответа при успешном выполнении:
+\starttyping
+200 Command okay\r\n
+\stoptyping
+Коды 2xx - успешное выполнение, 4xx и 5xx - ошибка, 3xx - необходимо
+дополнительное действие.
+
+\SlideTitle {Аутентификация в FTP}
+Отправка имени пользователя:
+\starttyping
+USER root\r\n
+\stoptyping
+Если имя правильное, получаем ответ:
+\starttyping
+331 User name okay, need password\r\n
+\stoptyping
+Необходим пароль. Передача пароля:
+\starttyping
+PASS 123\r\n
+\stoptyping
+Если пароль правильный, получаем ответ:
+\starttyping
+230 User logged in, proceed\r\n
+\stoptyping
+
+\SlideTitle {Передача данных}
+Для передачи данных необходимо дополнительное TCP-соединение. Запрашиваем
+открытие сокета на стороне сервера:
+\starttyping
+PASV\r\n
+\stoptyping
+Ответ содержит адрес и номер порта серверного сокета:
+\starttyping
+227 PASV ok (192,168,0,8,159,107)
+\stoptyping
+Каждое число в скобках - 1 байт. Первые 4 - IP-адрес, последние 2 - номер
+порта.
+
+Устанавливаем соединение для передачи данных. Далее даем команду на скачивание:
+\starttyping
+RETR file1\r\n
+\stoptyping
+Ответ:
+\starttyping
+226 Operation successful\r\n
+\stoptyping
+После этого данные можно принимать через ранее открытое соединение.
+
+\SlideTitle {FTP-команда, пример}
+\starttyping
+FILE *sock_stream;
+char *user_name = "root;
+char response[100];
+int ftp_code;
+char *first_word;
+
+ret = fprintf(sock_stream, "USER %sr\n", user_name);
+if (ret < 0)
+	goto on_error;
+fflush(sock_stream);
+
+fgets(response, sizeof(response), sock_stream);
+/* Формат %ms означает чтение строки в динамически выделенный буфер. */
+ret = sscanf(response, "%d %ms", &code, &first_word);
+if (ret != 2)
+	goto on_error;
+\stoptyping
+
+\SlideTitle {Прочие команды}
+\startitemize
+\item PWD - вывод текущего каталога FTP-сервера,
+\item CWD - смена текущего каталога,
+\item LIST - вывод содержимого текущего каталога,
+\item MKD - создание нового каталога,
+\item QUIT - завершение сессии.
+\stopitemize
+
+\SlideTitle {Стандартный клиент}
+\starttyping
+$ ftp 192.168.0.8
+Connected to 192.168.0.8 (192.168.0.8).
+220 Operation successful
+Name (192.168.0.8:pavel): root
+530 Login with USER+PASS
+331 Specify password
+Password:
+230 Operation successful
+ftp> passive
+Passive mode on.
+ftp> get init.sh
+local: init.sh remote: init.sh
+227 PASV ok (192,168,0,8,141,187)
+150 Opening BINARY connection for init.sh (654 bytes)
+226 Operation successful
+654 bytes received in 0,000176 secs (3,6e+03 Kbytes/sec)
+ftp>
+\stoptyping
+
+\SlideTitle {C-строка vs строка текста}
+\startitemize
+\item C-строка - последовательность символом, ограниченная нулем: {\tt 's',
+'t', 'r', 'i', 'n', 'g', '\textbackslash 0'}. Используется только внутри приложения.
+\item Строка текста - последовательность символов, ограниченная символом
+перехода на новую строку: {\tt 's', 't', 'r', 'i', 'n', 'g', '\textbackslash
+n'}. Используется в файлах и пакетах.
+\item В данных, которые находятся в файле или пакете, никогда нет нулевого
+окончания. Его должна добавлять программа.
+\item Некоторые стандартные функции ({\tt read()}, {\tt fread()}) используют
+массив байтов. Они не используют и не добавляют нулевое окончание.
+\item Некоторые стандартные функции автоматически добавляют нулевое окончание.
+Например, {\tt fgets()} читает строку текста в буфер и записывает в конец
+нулевое окончание.
+\stopitemize
+
+\SlideTitle {Порядок байтов}
+Как представить в памяти многобайтовое число 2864434397 (0xaabbccdd)?
+
+\\
+
+Порядок little-endian:
+
+\setupTABLE[row][first][align=center]
+\bTABLE
+\bTABLEbody
+\bTR
+\bTD Адрес \eTD
+\bTD 0 \eTD
+\bTD 1 \eTD
+\bTD 2 \eTD
+\bTD 3 \eTD
+\eTR
+\bTR
+\bTD Значение \eTD
+\bTD 0xdd \eTD
+\bTD 0xcc \eTD
+\bTD 0xbb \eTD
+\bTD 0xaa \eTD
+\eTR
+\eTABLEbody
+\eTABLE
+
+\\
+
+Порядок big-endian:
+
+\setupTABLE[row][first][align=center]
+\bTABLE
+\bTABLEbody
+\bTR
+\bTD Адрес \eTD
+\bTD 0 \eTD
+\bTD 1 \eTD
+\bTD 2 \eTD
+\bTD 3 \eTD
+\eTR
+\bTR
+\bTD Значение \eTD
+\bTD 0xaa \eTD
+\bTD 0xbb \eTD
+\bTD 0xcc \eTD
+\bTD 0xdd \eTD
+\eTR
+\eTABLEbody
+\eTABLE
+
+\startitemize
+\item Каждый процессор ожидает определённый порядок байтов в памяти для
+корректного выполнения математических операций.
+\item x86 использует порядок little-endian.
+\item В сетевых протоколах используется порядок big-endian (сетевой порядок
+байтов).
+\stopitemize
+
+\SlideTitle {Порядок байтов, API}
+Перевод из процессорного порядка в сетевой (host to network):
+\starttyping
+int processor_int, network_int;
+short processor_short, network_short;
+
+network_int = htonl(processor_int);
+network_short = htons(processor_short);
+\stoptyping
 
 \stopcomponent
