@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	} else if (FIXME) {
 		/* Родительский процесс */
 		int child_status;
-		pit_t terminated_pid;
+		pid_t terminated_pid;
 
 		terminated_pid = waitpid(FIXME, &child_status, FIXME);
 
