@@ -38,12 +38,6 @@
 технология.
 \stopitemize
 
-Перевод из сетевого порядка в процессорный (network to host):
-\starttyping
-processor_int = htonl(network_int);
-processor_short = htons(network_short);
-\stoptyping
-
 \SlideTitle {Заголовок IP-дейтаграммы}
 \IncludePicture[horizontal][diagrams/ip-header.png]
 
@@ -423,6 +417,12 @@ short processor_short, network_short;
 
 network_int = htonl(processor_int);
 network_short = htons(processor_short);
+\stoptyping
+
+Перевод из сетевого порядка в процессорный (network to host):
+\starttyping
+processor_int = htonl(network_int);
+processor_short = htons(network_short);
 \stoptyping
 
 \stopcomponent
