@@ -1,5 +1,5 @@
 
-DOCS = client-sockets-slides
+DOCS = client-sockets-slides class-task
 DIAGRAMS = \
 	   diagrams/network.pdf \
 	   diagrams/4-layer-model-implementation.pdf \

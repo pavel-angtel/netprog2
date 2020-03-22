@@ -1,0 +1,81 @@
+
+\startcomponent class-task
+\environment practice-env
+
+\subsection{Упражнения к теме \quote{Клиентские сокеты}}
+
+\startitemize[n]
+\item В AngtelOS создайте файл, доступный встроенному FTP-серверу:
+\starttyping
+# echo 123 > /home/root/file1
+\stoptyping
+\item На физической машине запустите анализатор пакетов Wireshark. Включите
+перехват пакетов на сетевом интерфейсе с адресом 192.168.3.6.
+\item На физической машине запустите консольный FTP-клиент.
+\item Установите соединение с сервером:
+\starttyping
+ftp> open 192.168.3.8
+Connected to 192.168.3.8 (192.168.3.8).
+220 Operation successful
+Name (192.168.3.8:pavel): root
+530 Login with USER+PASS
+SSL not available
+331 Specify password
+Password:
+230 Operation successful
+Remote system type is UNIX.
+Using binary mode to transfer files.
+\stoptyping
+\item Изучите процесс установки соединения в выводе Wireshark. Какие номера
+портов TCP используют клиент и сервер? Какие пакеты обеспечивают установку
+соединения TCP? Кто передает первый пакет FTP?
+\item Введите команды {\tt system} и {\tt pwd}:
+\starttyping
+ftp> system
+215 UNIX Type: L8
+ftp> pwd
+257 "/"
+\stoptyping
+Сопоставьте вывод клиента с содержимым переданных пакетов. Какие коды и
+сообщения содержатся в ответах от сервера?
+\item Включите пассивный режим на клиенте:
+\starttyping
+ftp> passive
+Passive mode on.
+\stoptyping
+\item Выведите список файлов, находящихся в текущем каталоге сервера:
+\starttyping
+ftp> ls
+227 PASV ok (192,168,3,8,140,229)
+150 Directory listing
+-rw-r--r--    1 0        0                4 Jan  1 00:40 file1
+226 Operation successful
+\stoptyping
+Как сервер сообщает клиенту номер порта для дополнительного TCP-соединения? По
+выводу Wireshark убедитесь, что клиент использует номер порта, указанный
+сервером.
+\item Скачайте с сервера файл {\tt file1}:
+\starttyping
+ftp> get file1
+local: file1 remote: file1
+227 PASV ok (192,168,3,8,144,23)
+150 Opening BINARY connection for file1 (4 bytes)
+226 Operation successful
+4 bytes received in 0,000168 secs (23 Kbytes/sec)
+\stoptyping
+\item Закройте соединение с сервером:
+\starttyping
+ftp> quit
+221 Operation successful
+\stoptyping
+\item Удалите файл file1:
+\starttyping
+# rm /home/root/file1
+\stoptyping
+\item Напишите программу {\tt ftp-client}, которая устанавливает соединение с
+локальным FTP-сервером (адрес 127.0.0.1, порт 21), принимает первый пакет от
+сервера, извлекает из него код и текст сообщения, после чего завершает
+соединение с сервером отправкой команды QUIT.
+\stopitemize
+
+\stopcomponent
