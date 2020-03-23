@@ -9,108 +9,409 @@
   ]
 \placeTitle
 
-\SlideTitle {Сервер на основе пакетного сокета}
-\IncludePicture[horizontal][diagrams/dgram-server.pdf]
+\SlideTitle {Клиенты и сервер}
+\IncludePicture[horizontal][diagrams/multiple-clients.pdf]
 
-\SlideTitle {Привязка сокета к адресу}
+\SlideTitle {Вопросы}
 \startitemize
-\item Пример:
+\item Как указать номер TCP-порта в серверном приложении?
+\item Как выбирается номер TCP-порта в клиентском приложении?
+\item Как серверное приложение определяет источник (от какого клиента)
+принимаемых данных?
+\stopitemize
+
+\SlideTitle {Слушающие и передающие сокеты}
+\startitemize
+\item В серверном приложении сетевое взаимодействие организовано с помощью 2
+типов сокетов - {\em слушающего} сокет и {\em передающих} сокетов.
+\item Слушающий сокет отвечает за установку TCP-соединений со всеми клиентами.
+\item Слушающий сокет {\em привязывается} к определенному адресу и порту.
+\item Передающий сокет отвечает за передачу данных между 1 клиентом и сервером.
+\item Передающий сокет создается из слушающего сокета.
+\item Номер порта передающего сокета выделяется ядром динамически.
+\stopitemize
+
+\SlideTitle {Серверный сокет до привязки}
+\IncludePicture[horizontal][diagrams/before-binding.pdf]
+
+\SlideTitle {Привязка сокета, API}
 \starttyping
-	struct sockaddr_un addr;
-	addr.sun_family = AF_UNIX;
-	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", "/tmp/sock_dgram_server");
+int sock;
+struct sockaddr_in addr;
+int ret;
 
-	bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
+sock = socket(AF_INET, SOCK_STREAM, 0);
+
+addr.sin_family = AF_INET;
+addr.sin_port = htons(port);
+addr.sin_addr = {INADDR_ANY}; /* Привязка ко всем системным IP-адресам. */
+
+/* int bind(int socket, const struct sockaddr *address, socklen_t addr_len); */
+ret = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+if (ret < 0) {
+	fprintf(stderr, "Failed to bind to server: %s\n", strerror(errno));
+	goto on_error;
+}
 \stoptyping
-\item Для каждого семейства адресов своя структура, описывающая адрес ({\tt
-sockaddr_un}, {\tt sockaddr_in}). При передаче в качестве аргумента {\tt bind},
-адрес приводится к абстрактному типу {\tt sockaddr}.
-\item {\tt bind} для Unix-сокета создает файл особого типа с указанным именем.
-\item Файл не хранит данные!
-\item Файл остается после закрытия сокета. Перед повторным вызовом {\tt bind}
-его необходимо удалить.
-\stopitemize
 
-\SlideTitle {Обработка запросов на сервере}
-\startitemize
-\item У клиента обычно нет публичного адреса.
-\item Сервер отправляет ответ на тот адрес, с которого пришел запрос.
-\item Пример:
+\SlideTitle {Очередь входящих соединений}
+\IncludePicture[horizontal][diagrams/ingress-queue.pdf]
+
+\SlideTitle {Перевод сокета в слушающий режим, API}
 \starttyping
-	struct sockaddr_un addr;
-	socklen_t addrlen = sizeof(addr);
+int sock;
+struct sockaddr_in addr;
+int ret;
 
-	recvfrom(sock_fd, rx_buf, rx_len, (struct sockaddr *)&addr, &addrlen);
+sock = socket(AF_INET, SOCK_STREAM, 0);
 
-	sendto(sock_fd, tx_buf, tx_len, (struct sockaddr *)&addr, addrlen);
+/* ... */
+bind(sock, (struct sockaddr *)&addr, sizeof(addr));
+
+/* int listen(int socket, int backlog); */
+ret = listen(sock, 5);
+if (ret < 0) {
+	fprintf(stderr, "Failed to put socket into listening state: %s\n",
+			strerror(errno));
+	goto on_error;
+}
 \stoptyping
-\item {\tt addrlen} должен быть инициализирован до вызова {\tt recvfrom}. Он
-указывает размер буфера для хранения адреса. После вызова он указывает реальный
-размер адреса.
-\stopitemize
 
-\SlideTitle {Отличия потокового сервера от пакетного}
-\startitemize
-\item Потоковый сокет требует установки соединения. Что дает соединение:
-\startitemize
-\item Сохранение порядка передачи данных за счет нумерации байтов потока.
-\item Надежная доставка за счет повторной отправки неподтвержденных сегментов.
-\item Детектирование разрыва соединения.
-\stopitemize
-\item Для AF_INET соединение устанавливается с помощью протоколу TCP, для
-AF_UNIX - средствами ядра Linux.
-\item Соединение устанавливается между 2 приложениями.
-\item Проблема: Каждый сокет может принадлежать 1 соединению, но серверу
-необходимо обслуживать несколько клиентов (несколько соединений).
-\stopitemize
-
-\SlideTitle {Слушающий сокет}
-\starttyping
-       int listen(int sockfd, int backlog);
-\stoptyping
-\startitemize
-\item Слушающий сокет отвечает только за прием соединений от клиентов.
-\item Функция {\tt listen} переводит сокет, созданный с помощью {\tt socket}, в
-слушающий режим.
-\item Слушающий сокет необходимо привязывать к публичному адресу.
-\item Аргумент {\tt backlog} задает максимальное количество соединений, ждущих
-приема. При превышения этого количества запрос на соединение отклоняется.
-\item Прием соединения и извлечение его из очереди {\tt backlog} осуществляется
-функцией {\tt accept}.
-\stopitemize
+\SlideTitle {Работа сокета в слушающем режиме}
+\IncludePicture[horizontal][diagrams/listening-socket.pdf]
 
 \SlideTitle {Передающий сокет}
+\IncludePicture[horizontal][diagrams/transmitting-socket-creation.pdf]
+
+\SlideTitle {Создание передающего сокета, API}
 \starttyping
-       int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+int listen_sock, data_sock;
+struct sockaddr_in addr;
+int ret;
+
+listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+
+/* ... */
+bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr));
+listen(listen_sock, 5);
+
+/* int accept(int socket, struct sockaddr *address, socklen_t *addr_len); */
+data_sock = accept(listen_sock, NULL, NULL);
+if (data_sock < 0) {
+	fprintf(stderr, "Failed to accept data connection: %s\n",
+			strerror(errno));
+	goto on_error;
+}
+
+ret = recv(data_sock, buf, sizeof(buf), 0);
 \stoptyping
-\startitemize
-\item Функция {\tt accept} возвращает дескриптор передающего сокета.
-\item Передача данных по каждому из установленных соединений производится через
-передающие сокеты. 1 передающий сокет = 1 соединение.
-\item В приложении может существовать несколько передающих сокетов, созданных
-из одного слушающего сокета.
-\item {\tt accept} - блокирующая функция, которая возвращается только после
-приема нового соединения.
-\item Передающий сокет уже привязан (вызывать {\tt bind} не нужно).
-\item Передача и прием производятся функциями {\tt send} и {\tt recv}.
-\item Когда клиент разрывает соединение, {\tt recv} на передающем сокете
-сервера возвращает 0.
-\stopitemize
 
-\SlideTitle {Сервер на основе потокового сокета}
-\IncludePicture[horizontal][diagrams/stream-server.pdf]
+\SlideTitle {Работа сервера при создании передающих сокетов}
+\IncludePicture[horizontal][diagrams/transmitting-socket.pdf]
 
-\SlideTitle {Алгоритм сервера с одним передающим потоком}
+\SlideTitle {Разрыв соединения со стороны клиента}
+\starttyping
+	int listen_sock, data_sock;
+	struct sockaddr_in addr;
+	int ret;
+
+wait_connection:
+	data_sock = accept(listen_sock, NULL, NULL);
+	if (data_sock < 0) {
+		goto on_error;
+	}
+
+	while (1) {
+		char rx_buf[100], tx_buf[100];
+
+		ret = recv(data_sock, rx_buf, sizeof(rx_buf), 0);
+		if (ret == 0) {
+			printf("Client disconnected\n");
+			goto wait_connection;
+		}
+
+		/* Обработка запроса. */
+
+		send(data_sock, tx_buf, sizeof(tx_buf), 0);
+	}
+\stoptyping
+
+
+\SlideTitle {2 цикла обработки}
 \IncludePicture[horizontal][diagrams/stream-server-algorithm.pdf]
 
-\SlideTitle {Упражнения}
+\SlideTitle {2 цикла обработки, пример}
+\starttyping
+int listen_sock, data_sock;
+struct sockaddr_in addr;
+int ret;
+
+listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr));
+listen(listen_sock, 5);
+
+while (1) {
+	data_sock = accept(listen_sock, NULL, NULL);
+
+	while (1) {
+		char rx_buf[100], tx_buf[100];
+
+		ret = recv(data_sock, rx_buf, sizeof(rx_buf), 0);
+		if (ret == 0)
+			break;
+
+		/* Обработка запроса. */
+
+		send(data_sock, tx_buf, sizeof(tx_buf), 0);
+	}
+}
+\stoptyping
+
+\SlideTitle {Замечания}
 \startitemize
-\item Разработать сервер на основе пакетного Unix-сокета, который принимает
-запросы на адресе /tmp/sock_dgram_server, и для каждого запроса выводит
-сообщение в терминал. Анализировать запросы и отправлять ответы не требуется.
-\item Разработать сервер на основе потокового Unix-сокета, который принимает
-соединения на адресе /tmp/sock_stream_server, и для каждого соединения выводит
-сообщение в терминал. Соединение следует сразу же закрывать.
+\item Функции {\tt accept()} и {\tt recv()} являются блокирующими.
+\item Обмен данным в каждый момент времени производится максимум с одним
+клиентом. Соединения остальных ждут в очереди.
 \stopitemize
+
+\SlideTitle {Web-технологии}
+\IncludePicture[horizontal][diagrams/web.pdf]
+
+\SlideTitle {Hyper-text transfer protocol (HTTP)}
+\startitemize
+\item Протокол обеспечивает удаленный доступ к сетевым {\em ресурсам}. Пример:
+чтение HTML-страницы.
+\item Ресурс идентифицируется с помощью URL - Uniform Resource Locator. Пример:
+http://google.com/index.html.
+\item Взаимодействие между клиентом и сервером по принципу запрос-ответ.
+\item К указанному ресурсу применяется {\em метод}: чтение, запись, изменение и
+др.
+\item HTTP использует TCP в качестве протокола транспортного уровня.
+\item Каждая пара запрос-ответ передается в отдельном соединении TCP.
+\stopitemize
+
+\SlideTitle {Uniform Resource Locator (URL)}
+\setupTABLE[row][first][align=center]
+\setupTABLE[row][each][frame=off]
+\bTABLE
+\bTABLEbody
+\bTR
+\bTD Синтаксис \eTD
+\bTD <схема>://<доменное имя>:<порт>/<путь> \eTD
+\eTR
+\bTR
+\bTD Пример 1 \eTD
+\bTD http://angtel.ru/directory1/resource3 \eTD
+\eTR
+\bTR
+\bTD Пример 2 \eTD
+\bTD https://192.168.0.8/directory1/resource3 \eTD
+\eTR
+\eTABLEbody
+\eTABLE
+
+\startitemize
+\item Применение не ограничено протоколом HTTP. URL идентифицирует абстрактный
+сетевые ресурсы: файлы, люди, телефоны, почтовые ящики и др.
+\item Схема - задает протокол и определяет синтаксис остальной части URL.
+https- HTTP поверх протокола TLS.
+\item Доменные имена преобразуются в IP-адреса с помощью протокола DNS.
+\item Порт - опциональный TCP или UDP порт.
+\item Путь интерпретируется HTTP-сервером. Не обязательно путь к файлу в
+файловой системе.
+\stopitemize
+
+\SlideTitle {Методы HTTP}
+\startitemize
+\item GET - чтение содержимого ресурса.
+\item PUT - задание нового содержимого ресурса.
+\item POST - передача данных ресурсу.
+\item DELETE - удаление ресурса.
+\item PATCH - частичное изменение ресурса.
+\stopitemize
+
+\SlideTitle {Тип содержимого, MIME}
+Содержимое ресурса передается в {\em теле} запроса или ответа. В зависимости от
+ресурса формат данных в теле может быть разным. Этот формат указывается в
+сообщении в соответствии со стандартом MIME (Multipurpose Internet Mail
+Extensions).
+\blank
+Синтаксис: <тип>/<подтип>
+\blank
+Распространенные типы: image, text, audio, application.
+\blank
+Примеры: text/html, image/jpeg, application/pdf, application/json.
+\blank
+Тип содержимого указывается в {\em заголовке} Content-Type в HTTP сообщении.
+
+\SlideTitle {Доступ к страницам HTML}
+\IncludePicture[horizontal][diagrams/http-files.pdf]
+
+\SlideTitle {Доступ к ресурсам других приложений}
+\IncludePicture[horizontal][diagrams/http-external.pdf]
+
+\SlideTitle {Доступ к внутренним ресурсам сервера}
+\IncludePicture[horizontal][diagrams/http-inernal.pdf]
+
+\SlideTitle {Программируемая сеть}
+\startitemize
+\item Протокол HTTP можно использовать отдельно от технологий HTML, CSS,
+JavaScript и др. Клиентом в таком случае является не браузер, а некоторое
+неитерактивное управляющее приложение.
+\item REST (Representational State Transfer) - подход к построению API системы
+на основе сетевых ресурсов и протокола HTTP.
+\item REST - возможная основа программируемой сети устройств IoT.
+\stopitemize
+
+Пример - протокол RESTCONF:
+\startitemize
+\item Внутренние объекты системы (сетевые интерфейсы, таблицы маршрутизации,
+датчики и т.д.) представляются в виде сетевых ресурсов.
+\item Задание конфигурации производится через применение методов PUT, PATCH,
+DELETE к соответствующим ресурсам.
+\item Чтение конфигурации и статуса производится через применение метода GET.
+\stopitemize
+
+\SlideTitle {Синтаксис HTTP-запроса}
+\starttyping
+<Имя метода> <Путь> HTTP/1.1 \r\n
+<Имя заголовка>: <Значение> \r\n
+...
+<Имя заголовка>: <Значение> \r\n
+\r\n
+<Тело запроса>
+\stoptyping
+Пример:
+\starttyping
+PUT /directory/resource2 HTTP1.1 \r\n
+Host: angtel.ru \r\n
+User-Agent: firefox \r\n
+Content-Type: text/html \r\n
+\r\n
+<p> sdgsrthsrt <\p>
+\stoptyping
+
+\SlideTitle {Синтаксис HTTP-ответа}
+\starttyping
+HTTP/1.1 <Код> <Сообщение> \r\n
+<Имя заголовка>: <Значение> \r\n
+...
+<Имя заголовка>: <Значение> \r\n
+\r\n
+<Тело ответа>
+\stoptyping
+Пример:
+\starttyping
+HTTP/1.1 301 Moved Permanently\r\n
+Location: http://www.google.com\r\n
+\r\n
+\stoptyping
+
+\SlideTitle {picohttprequest, API}
+\starttyping
+const char *method_ptr, *path_ptr;
+struct phr_header headers[100];
+size_t method_len, path_len, num_headers;
+int minor_version;
+int headers_len;
+
+num_headers = 100;
+/* buf - буфер с запросом HTTP;
+ * len - размер буфера;
+ * method_ptr, path_ptr - указатели на метод и путь в HTTP-запросе,
+ *                        задаются функцией phr_parse_request;
+ * method_len, path_len - длина метода и пути в HTTP-запросе,
+ *                        задаются функцией phr_parse_request;
+ * headers - массив объектов, описывающих заголовки запроса,
+ *           заполняются функцией;
+ * num_headers - на входе определяет максимальное количество заголовков,
+ *               на выходе - обнаруженное количество заголовков.
+ */
+headers_len = phr_parse_request(buf, len, &method_ptr, &method_len, &path_ptr, &path_len,
+                                &minor_version, headers, &num_headers, 0);
+if (headers_len <= 0)
+	return -1;
+\stoptyping
+
+\SlideTitle {picohttprequest, API 2}
+\starttyping
+const char *method_ptr, *path_ptr;
+struct phr_header headers[100];
+size_t method_len, path_len, num_headers;
+int minor_version;
+int headers_len;
+
+num_headers = 100;
+headers_len = phr_parse_request(buf, len, &method_ptr, &method_len, &path_ptr, &path_len,
+                                &minor_version, headers, &num_headers, 0);
+if (headers_len <= 0)
+	return -1;
+
+/* После вызова функции path_ptr указывает на символ внутри буфера buf, на
+первый символ пути. Этот путь не ограничен нулевым терминатором '\0', так как
+phr_parse_request не меняет содержимое исходного буфера buf. Поэтому
+использовать path_str как C-строку нельзя! Для получения C-строки с путем
+необходимо скопировать путь в отдельный буфер. */
+snprintf(path, PATH_SIZE, "%.*s", (int)path_len, path_ptr);
+
+snprintf(body, BODY_SIZE, "%.*s", (int)(len - headers_len), buf + headers_len);
+\stoptyping
+
+\SlideTitle {Формирование ответа, API}
+
+\starttyping
+int status = 200;
+char status_msg[] = "Status message";
+char body[] = "Response body";
+
+char response[1024];
+
+snprintf(response, sizeof(response), "HTTP/1.1 %d %s\r\n"
+                                     "Content-Type: text/plain\r\n"
+                                     "\r\n"
+                                     "%s",
+                                     status, status_msg, body);
+\stoptyping
+
+\SlideTitle {Работа с HTTP в shell}
+Отправка запроса GET для ресурса resource1 на сайте google.com и отображение
+тела ответа:
+\starttyping
+$ curl google.com/resource1
+\stoptyping
+
+Отправка запроса GET и отображение запроса и ответа со всеми заголовками:
+\starttyping
+$ curl google.com/resource1 -v
+\stoptyping
+
+Отправка запроса PUT с заданным телом:
+\starttyping
+$ curl google.com/resource2 -X PUT --data "New resource content"
+\stoptyping
+
+\SlideTitle {Повторная привязка сокета после перезапуска приложения}
+\starttyping
+int listen_sock = -1;
+int option = 1;
+struct sockaddr_in addr = {
+	.sin_family = AF_INET,
+	.sin_port = htons(port),
+	.sin_addr = {INADDR_ANY},
+};
+int ret;
+
+listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+
+/* Установка опции SO_REUSEADDR позволяет создавать и привязывать сокет
+ * сразу после закрытия предыдущего сокета на этом порте. Ускоряет перезапуск
+ * программы при отладке.
+ */
+ret = setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+if (ret < 0) {
+	fprintf(stderr, "Failed to set socket option: %s\n", strerror(errno));
+	goto on_error;
+}
+\stoptyping
 
 \stopcomponent
