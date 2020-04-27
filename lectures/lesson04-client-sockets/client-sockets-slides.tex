@@ -116,12 +116,12 @@ int sock_fd;
 struct sockaddr_in addr;
 int ret;
 
+sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+
 addr.sin_family = AF_INET;
-/* Для номера порта и абреса используется сетевой порядок байтов! */
+/* Для номера порта и адреса используется сетевой порядок байтов! */
 add.sin_port = htons(21);
 inet_aton("127.0.0.1", &addr.sin_addr);
-
-sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
 /* int connect(int sockfd, struct sockaddr *serv_addr, socklen_t addrlen); */
 ret = connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
