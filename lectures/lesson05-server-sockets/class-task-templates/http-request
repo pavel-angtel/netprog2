@@ -1,0 +1,5 @@
+PUT /dir1/file2 HTTP/1.1
+Host: angtel.ru
+User-Agent: Firefox
+
+===body-content===
