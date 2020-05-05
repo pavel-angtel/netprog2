@@ -1,11 +1,11 @@
 
 DOCS = concurrency-slides
 DIAGRAMS = \
-	   diagrams/concurrent-solution.pdf \
-	   diagrams/parallel-solution.pdf \
-	   diagrams/request.pdf \
-	   diagrams/timeout-calculation.pdf \
-	   diagrams/timeout-handling.pdf \
-	   diagrams/web-server.pdf
+	   diagrams/light-bulb.pdf \
+	   diagrams/parallelism-redundancy.pdf \
+	   diagrams/repeater.pdf \
+	   diagrams/state-diagram.pdf \
+	   diagrams/tcp-state-machine.pdf \
+	   diagrams/timeout-calculation.pdf
 
 include ../Makefile.common

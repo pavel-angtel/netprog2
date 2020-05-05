@@ -9,25 +9,135 @@
   ]
 \placeTitle
 
-\SlideTitle {Web-сервер с поддержкой нескольких соединений}
-\IncludePicture[horizontal][diagrams/web-server.pdf]
+\SlideTitle {Сервер на основе блокирующих вызовов}
+\starttyping
+int handle_requests(int data_sock)
+{
+	while (1) {
+		char rx_buf[100];
 
-\SlideTitle {Обработка одного запроса}
-\IncludePicture[horizontal][diagrams/request.pdf]
+		ret = recv(data_sock, rx_buf, sizeof(rx_buf), 0);
+		if (ret == 0)
+			break;
 
-\SlideTitle {Решение на основе параллельной обработки запросов}
-\externalfigure[diagrams/parallel-solution.pdf][width=\textwidth]
- 
+		/* Обработка запроса. */
+	}
+}
+
+int handle_connections(int listen_sock)
+{
+	while (1) {
+		int data_sock;
+
+		data_sock = accept(listen_sock, NULL, NULL);
+
+		ret = handle_requests(data_sock);
+	}
+}
+\stoptyping
+
+\SlideTitle {Замечания}
 \startitemize
-\item Потоки - процессы с общим адресным пространством (общими данными).
-\item Создание с помощью {\tt pthread_create} (обертка вокруг {\tt fork}).
-\item Преимущество - использование нескольких ядер.
-\item На одном ядре потоки исполняются поочередно.
+\item {\tt recv()} и {\tt accept()} исполняются неопределенное время - до
+появления новых данных/соединений.
+\item Сервер не является многозадачным - не поддерживается одновременная
+обработка из нескольких соединений.
+\item Многие системные вызовы, отвечающие за ввод-вывод, являются блокирующими:
+{\tt read()}, {\tt write()}, {\tt open()}, {\tt connect()}, {\tt send()}.
+\item Как реализовать таймауты? Например, если мы хотим закрывать соединение, в
+котором какое-то время не было запросов.
 \stopitemize
 
-\SlideTitle {Недостатки}
+\SlideTitle {Неблокирующий режим файлового дескриптора}
+\starttyping
+{
+	int sock;
+	int flags;
+
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+
+	flags = fcntl(sock, F_GETFL);
+	flags |= O_NONBLOCK;
+	fcntl(sock, F_SETFL, flags);
+
+	/* Теперь весь ввод-вывод через sock является неблокирующим. */
+}
+
+{
+	int sock;
+
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+
+	/* Отдельный неблокирующий вызов. */
+	send(sock, tx_buf, sizeof(tx_buf), MSG_DONTWAIT);
+}
+\stoptyping
+
+\SlideTitle {Использование неблокирующих вызовов}
+\starttyping
+int handle_requests(int data_sock)
+{
+	while (1) {
+		char rx_buf[100];
+
+		ret = recv(data_sock, rx_buf, sizeof(rx_buf), 0);
+		if (ret == 0) }
+			break;
+		} else if (ret < 0 && errno == EWOULDBLOCK) {
+			printf("No request\n");
+		
+			/* Что делать дальше? */
+		} else if (ret < 0) {
+			fprintf(stderr, "Failed to read request\n");
+			return -1;
+		}
+
+		/* Обработка запроса. */
+	}
+}
+\stoptyping
+
+\SlideTitle {Возможное решение: многопоточность}
 \startitemize
-\item Возможный конфликт при доступе к общим данным:
+\item Каждое соединение обрабатывается отдельным потоком (\quote{нитью}).
+\item В Linux поток является специальным процессом.
+\item Все потоки имеют общее адресное пространство с основным процессом.
+\item Для создания потока используется функция {\tt pthread_create()} вместо
+{\tt fork()/execv()},
+\item Стандартная библиотека предоставляет набор функций для работы с потоками:
+{\tt pthread_join()}, {\tt pthread_cancel()}, {\tt pthread_attr_init()} и др.
+\item Потоки исполняются под управлением планировщика процессов Linux.
+\item Linux автоматически распределяет потоки pthread по имеющимся процессорным
+ядрам.
+\stopitemize
+
+\SlideTitle {Многопоточный сервер}
+\starttyping
+int data_socks[MAX_CONNECTIONS];
+int next;
+
+void handle_requests(void *data)
+{
+	int data_sock = (int)data;
+
+	while (1) {
+		/* Чтение и обработка запроса. */
+	}
+}
+
+int handle_connections(int listen_sock)
+{
+	while (1) {
+		pthread_t thread;
+
+		data_socks[next] = accept(listen_sock, NULL, NULL);
+		pthread_create(&thread, NULL, handle_requests, (void *)data_socks[next]);
+		next++;
+	}
+}
+\stoptyping
+
+\SlideTitle {Проблема: конфликт при доступе к общим данным}
 
 \starttabulate[|lT|lT|lT|]
 \NC Поток 1 \NC Поток 2 \NC Результат \NR
@@ -36,33 +146,116 @@
 \NC \NC array[1] = 'b'; \NC {'b', 'b'} \NR
 \NC array[1] = 'a'; \NC \NC {'b', 'a'}  - недопустимая комбинация\NR
 \stoptabulate
-\item Необходима защита данных с помощью семафоров или мьютексов:
-\starttyping
-semaphore_down();
-array[0] = 'a'; array[1] = 'a';
-semaphore_up();
-\stoptyping
-\item Многопоточные приложения тяжело разрабатывать и отлаживать.
-\item Если большую часть времени поток проводит в ожидании, нет выигрыша от
-использования нескольких ядер.
-\stopitemize
 
-\SlideTitle {Решение на основе одновременной (concurrent) обработки запросов}
-\IncludePicture[horizontal][diagrams/concurrent-solution.pdf]
- 
-\SlideTitle {Системный вызов {\tt select}}
+\blank
+Область кода, в которой происходит обращение к общим данным, называется {\em
+критической секцией}. Чтобы обеспечить целостность данных, критическая секция
+должна исполняться не более чем одним потоком в каждый момент времени.
+\blank
+Вход в критическую секцию защищается с помощью мьютексов:
+\starttyping
+mutex_lock();
+array[0] = 'a'; array[1] = 'a';
+mutex_unlock();
+\stoptyping
+Если при входе в критическую секцию поток обнаруживает запертый мьютекс,
+он ждет, когда другой поток освободит этот мьютекс.
+
+\SlideTitle {Многопоточный сервер с мьютексами}
+\starttyping
+pthread_mutex_t global_mutex;
+
+void handle_requests(void *data)
+{
+	int data_sock = (int)data;
+	while (1) {
+		recv(data_sock, rx_buf, sizeof(rx_buf), 0);
+
+		pthread_mutex_lock(&global_mutex);
+		/* Обработка запроса. */
+		pthread_mutex_unlock(&global_mutex);
+	}
+}
+
+int handle_connections(int listen_sock)
+{
+	while (1) {
+		pthread_t thread;
+		data_socks[next] = accept(listen_sock, NULL, NULL);
+		pthread_create(&thread, NULL, handle_requests, (void *)data_socks[next]);
+	}
+}
+\stoptyping
+
+\SlideTitle {Нужен ли вообще параллелизм?}
+\hfil \externalfigure[diagrams/parallelism-redundancy.pdf][height=0.7\textheight] \hfil
+\blank
+
+parallelism - решение нескольких задач на нескольких ядрах.
+
+concurrency - исполнение нескольких задач поочередно на одном ядре.
+
+\SlideTitle {Использование гипотетического кооперативного планировщика}
+\starttyping
+void handle_requests(void *data)
+{
+	int data_sock = (int)data;
+	while (1) {
+		ret = recv(data_sock, rx_buf, sizeof(rx_buf), 0);
+		if (ret < 0 && errno == EWOULDBLOCK)
+			schedule();
+
+		/* Обработка запроса. */
+	}
+}
+
+int handle_connections(int listen_sock)
+{
+	while (1) {
+		cooperative_thread_t thread;
+		data_socks[next] = accept(listen_sock, NULL, NULL);
+		if (data_socks[next] < 0 && errno == EWOULDBLOCK)
+			schedule();
+		coop_thread_create(&thread, NULL, handle_requests, (void *)data_socks[next]);
+	}
+}
+\stoptyping
+
+\SlideTitle {Вызов функций по событиям}
+\starttyping
+void event_dispatcher(void)
+{
+	int listen_sock, data_socks[MAX_CONNECTIONS];
+
+	/* wait_events - гипотетическая функция, которая ждет появления новых
+	соединений или данных хотя бы на одном из перечисленных сокетов. */
+	wait_events(listen_sock, data_sock[0], ... , data_socks[MAX_CONNECTIONS - 1]);
+
+	/* has_events - гипотетическая функция, которая проверяет наличие новых
+	соединений или данных на указанном сокете. */
+	if (has_events(listen_sock))
+		handle_connections(listen_sock);
+
+	for (i = 0; i < MAX_CONNECTIONS; i++)
+		if (has_events(data_socks[i]))
+			handle_requests(data_socks[i]);
+}
+\stoptyping
+
+\SlideTitle {Ожидание событий с помощью {\tt select()}}
 \starttyping
 int select(int nfds, fd_set *readfds, fd_set *, fd_set *, struct timeval *timeout);
 \stoptyping
 \startitemize
-\item {\tt select} выполняет подписку на события и ожидание.
-\item {\tt readfds} - множество файловых дескрипторов (от файлов, сокетов и др.).
-\item {\tt select} спит до тех пор, пока хотя бы один из дескрипторов не будет
-\emph{готов к чтению}. Готовность к чтению означает, что последующий {\tt read}
-(или {\tt recv}) вернет данные без ожидания.
-\item После возвращения из {\tt select} множество {\tt readfds} содержит только
-те дескрипторы, которые готовы к чтению. Код возврата - общее количество
-дескрипторов, готовых к чтению.
+\item {\tt fd_set} - {\em множество файловых дескрипторов}.
+\item Функция {\tt select()} принимает на вход три множества дескрипторов и
+ждет до тех пор, пока хотя бы один дескриптор в любом множестве не окажется в
+состоянии {\em готовности}. Для множества readfds функция ожидает {\em
+готовность к чтению}.
+\item Функция select() меняет множества дескрипторов. После завершения в каждом
+множестве остаются только дескрипторы в состоянии готовности.
+\item Готовность к чтению означает, что последующий {\tt read} (или {\tt recv})
+вернет данные без ожидания.
 \item Аргумент {\tt timeout} задает максимальное время ожидания готовности.
 Если это время истекает, {\tt select} возвращает 0.
 \item Если {\tt timeout} установлен в {\tt NULL}, {\tt select} ждет готовности
@@ -92,6 +285,33 @@ if (FD_ISSET(fd1, &fds)) {
 \item Аргумент {\tt nfds} должен быть равен {\tt (max(fd1, fd2, ..., fdn) + 1)}.
 \stopitemize
 
+\SlideTitle {Вызов функций по событиям 2}
+\starttyping
+void event_dispatcher(void)
+{
+	int listen_sock, data_socks[MAX_CONNECTIONS], max_fd;
+	fd_set fds;
+
+	FD_ZERO(&fds);
+	FD_SET(listen_sock, &fds);
+	max_fd = listen_sock;
+	for (i = 0; i < MAX_CONNECTIONS; i++) {
+		FD_SET(data_socks[i], &fds);
+		if (data_socks[i] > max_fd)
+			max_fd = data_socks[i];
+	}
+
+	select(max_fd + 1, fds, NULL, NULL, NULL);
+
+	if (FD_ISSET(listen_sock, &fds))
+		handle_connections(listen_sock);
+
+	for (i = 0; i < MAX_CONNECTIONS; i++)
+		if (FD_ISSET(data_socks[i], &fds))
+			handle_requests(data_socks[i]);
+}
+\stoptyping
+
 \SlideTitle {Работа со структурой {\tt struct timeval}}
 \startitemize
 \item Определение
@@ -104,7 +324,7 @@ struct timeval {
 \item Получение текущего времени:
 \starttyping
 struct timeval tv;
-gettimeofday(&tv, NULL);
+gettimeofday(&tv, NULL); /* Время от начала Эпохи (1970 год) */
 \stoptyping
 
 \item Арифметика:
@@ -120,33 +340,64 @@ if (timercmp(&tv1, &tv2, <) {
 \stoptyping
 \stopitemize
 
-\SlideTitle {Простой цикл обработки событий (event loop)}
+\SlideTitle {Ожидание запроса с таймаутом}
 \starttyping
-int listen_fd, sock_fd;
-int max_fd, ret;
-listen_fd = socket(...);
-sock_fd = accept(listen_fd,...);
+/* Время, начиная с которого мы считаем соединение data_socks[0] устаревшим. */
+struct timeval connection_expiration_time;
 
-while (1) {
-	struct fd_set fds;
-	struct timeval timeout = {.tv_sec = 1};
+{
+	struct timeval now, timeout;
 
 	FD_ZERO(&fds);
-	FD_SET(listen_fd, &fds);
-	FD_SET(sock_fd, &fds);
-	max_fd = listen_fd > sock_fd ? listen_fd : sock_fd;
-	ret = select(max_fd + 1, &fds, NULL, NULL, &timeout);
+	FD_SET(data_socks[0], &fds);
+	max_fd = data_socks[0];
+
+	gettimeofday(&now, NULL);
+	/* timeout = connection_expiration_time - now */
+	timersub(&connection_expiration_time, &now, &timeout);
+
+	ret = select(max_fd + 1, fds, NULL, NULL, &timeout);
 	if (ret == 0) {
-		/* Обработка таймаута. */
-	} else if (FD_ISSET(listen_fd, &fds)) {
-		/* Прием нового соединения. */
-	} else if (FD_ISSET(sock_fd, &fds)) {
-		/* Обработка запроса. */
+		/* Таймаут. */
+		close(data_socks[0]);
+		return 0;
+	}
+	if (FD_ISSET(data_socks[0], &fds))
+		handle_requests(data_socks[0]);
+}
+\stoptyping
+
+\SlideTitle {Расчет таймаута при наличии нескольких соединений}
+\externalfigure[diagrams/timeout-calculation.pdf][width=\textwidth]
+$timeout = min(Exp_1 - now, Exp_2 - now, ..., Exp_n - now)$
+
+\SlideTitle {Работа с несколькими таймерами}
+\starttyping
+/* Время, начиная с которого мы считаем соединение data_socks[i] устаревшим. */
+struct timeval connection_expiration_times[MAX_CONNECTIONS]
+
+{
+	struct timeval now, timeout = {.tv_sec = LONG_MAX}, candidate;
+
+	gettimeofday(&now, NULL);
+	for (i = 0; i < MAX_CONNECTIONS; i++) {
+		timersub(&connection_expiration_times[i], &now, &candidate);
+		if (timercmp(&candidate, &timeout, <)
+			timeout = candidate;
+	}
+
+	ret = select(max_fd + 1, fds, NULL, NULL, &timeout);
+	if (ret == 0) {
+		/* Могло пройти больше времени, чем timeout. */
+		gettimeofday(&now, NULL);
+		for (i = 0; i < MAX_CONNECTIONS; i++) {
+			if (timercmp(&connection_expiration_times[i], &now, <)
+				close(data_socks[i]);
 	}
 }
 \stoptyping
 
-\SlideTitle {Обобщенный цикл обработки событий (event loop)}
+\SlideTitle {Цикл обработки событий (event loop)}
 \starttyping
 while (1) {
 	struct fd_set fds;
@@ -157,7 +408,7 @@ while (1) {
 		FD_SET(sock_fd, &fds);
 		max_fd = sock_fd > max_fd ? sock_fd : max_fd;
 
-		... /* Модицикация timeout */
+		... /* Модификация timeout */
 	}
 	ret = select(max_fd + 1, &fds, NULL, NULL, &timeout);
 	if (ret == 0) {
@@ -172,62 +423,189 @@ while (1) {
 }
 \stoptyping
 
-\SlideTitle {Блокирующий и неблокирующие вызовы}
+\SlideTitle {Правила написания обработчиков событий}
 
 \startitemize
-\item {\tt select} должен быть единственной функцией в приложении, которой
-разрешено спать.
-\item Готовность дескриптора к чтению гарантирует, что 1 последующий вызов {\tt
-read} вернется без блокирования процесса. Что делать, если требуется несколько
-вызовов (например, приняли сразу несколько пакетов)?
-\item Флаг {\tt MSG_DONTWAIT} делает вызовы {\tt recv} и {\tt send}
-неблокирующими.
-\item Если данных нет, возвращается ошибка {\tt EAGAIN} без блокировки:
+\item Не должно быть блокирующих вызовов.
+\item Не должно быть больше одного неблокирующего вызова, который может вернуть
+ошибку {\tt EWOULDBLOCK}.
+\stopitemize
+
+Так делать нельзя:
 \starttyping
-	while (1) {
-		ret = recv(sock_fd, buf, len, MSG_DONTWAIT);
-		if (ret < 0 && errno == EAGAIN) {
-			/* Нет данных */
-			break;
-		} else if (ret < 0) {
-			/* Другая ошибка */
-			return -1;
-		}
+int handle_requests(int data_sock)
+{
+	recv(data_sock, request1, sizeof(request1), MSG_DONTWAIT);
+	/* Обработка запроса 1. */
+	send(data_sock, response1, sizeof(response1), 0);
+
+	recv(data_sock, request2, sizeof(request2), MSG_DONTWAIT);
+	/* Обработка запроса 2. */
+	send(data_sock, response2, sizeof(response2), 0);
+
+	return 0;
+}
+\stoptyping
+
+\SlideTitle {Правила написания обработчиков событий (2)}
+
+\starttyping
+int num_requests;
+
+int handle_requests(int data_sock)
+{
+	switch (num_requests) {
+	case 0:
+		recv(data_sock, request1, sizeof(request1), MSG_DONTWAIT);
+		/* Обработка запроса 1. */
+
+		/* Предполагаем, что send() никогда не блокирует программу. */
+		send(data_sock, response1, sizeof(response1), 0);
+		nrequests++;
+		break;
+	case 1:
+		recv(data_sock, request2, sizeof(request2), MSG_DONTWAIT);
+		/* Обработка запроса 2. */
+		send(data_sock, response2, sizeof(response2), 0);
+		nrequests++;
+		break;
 	}
+	return 0;
+}
 \stoptyping
+
+\SlideTitle {Больше, чем просто {\tt select()}}
+\startitemize
+\item Помимо {\tt select()}, Linux предлагает функционально эквивалентные API
+{\tt poll()} и {\tt epoll()}.
+\item Функция {\tt select()} реализует шаблон (паттерн) проектирования
+\quote{реактор}.
+\item Библиотеки libevent и libev для разработки высокопроизводительных
+серверов основаны на вызовах {\tt select()}/{\tt poll()}.
+\item В большинстве языков программирования есть библиотеки, предоставляющие
+аналогичные функции: Twisted в Python, EventMachine в Ruby и др.
+\item В некоторых языках программирования (JavaScript) весь ввод-вывод
+осуществляется через планирование и обработку событий.
 \stopitemize
 
-\SlideTitle {Определение таймаута при наличии нескольких таймеров}
-\externalfigure[diagrams/timeout-calculation.pdf][width=\textwidth]
-$timeout = min(T_1 - Current, T_2 - Current, ..., T_n - Current)$
+\SlideTitle {Диаграмма состояний}
+\IncludePicture[horizontal][diagrams/state-diagram.pdf]
 
-\SlideTitle {Обработка таймаута при наличии нескольких таймеров}
-\IncludePicture[horizontal][diagrams/timeout-handling.pdf]
-
-\SlideTitle {Замечания по таймерам}
+\SlideTitle {Конечный автомат}
+Конечный автомат Мура: $(\Sigma, S, s_0, \delta, F)$
 \startitemize
-\item {\tt select} спит в течение времени, не меньшего, чем {\tt timeout}. Но
-может спать дольше!
-\item После таймаута надо проверять все таймеры, а не только самый ранний.
-\item Вычислять новое значение таймаута надо от текущего момента, а не от
-времени срабатывания предыдущего таймера.
+\item $\Sigma$ - множество входных событий.
+\item $S$ - множество состояний.
+\item $s_0$ - начальное состояние.
+\item $\delta$ - функция переходов, $\delta: S \times \Sigma \rightarrow S$.
+\item $F$ - множество конечных состояний.
 \stopitemize
 
-\SlideTitle {Упражнения}
-\startitemize
-\item Разработать приложение копирующее данные с файлового дескриптора 0 в
-файловый дескриптор 1. Ожидание новых данных должно быть реализовано с помощью
-функции {\tt select}. Дескриптор 0 должен быть переведен в неблокирующий режим
-помощью функции {\tt fcntl}. Пример для дескриптора {\tt fd}:
+Автомат Мили: для каждого перехода между состояниями дополнительно задается
+выходной сигнал. На диаграмме состояний событие и выходной сигнал разделяются
+символом '/'.
+
+\SlideTitle {Конечный автомат TCP соединения}
+\IncludePicture[horizontal][diagrams/tcp-state-machine.pdf]
+
+\SlideTitle {Пример: лампочка}
+\IncludePicture[horizontal][diagrams/light-bulb.pdf]
+
+\SlideTitle {Реализация (1)}
 \starttyping
-	include <fcntl.h>
+enum state {
+	LIGHT_ON,
+	LIGHT_OFF,
+	BROKEN,
+};
 
-	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
+enum events {
+	TURN_ON,
+	TURN_OFF,
+	BRICK,
+};
+
+static enum state state;
 \stoptyping
-\item Разработать приложение, реализующее 10 одновременно работающих таймеров.
-Таймаут для каждого таймера - случайное число в диапазоне от 1 до 10 секунд.
-При срабатывании таймера необходимо выводить сообщение в терминал с номером
-этого таймера. Для получения случайного числа использовать функцию {\tt rand}.
+
+\SlideTitle {Реализация (2)}
+\starttyping
+void run_state_machine(enum event event)
+{
+	switch (state) {
+	case LIGHT_OFF:
+		if (event == TURN_ON)
+			state = LIGHT_ON;
+		else if (event == BRICK)
+			state = BROKEN;
+		break;
+	case LIGHT_ON:
+		if (event == TURN_OFF)
+			state = LIGHT_OFF;
+		else if (event == BRICK)
+			state = BROKEN;
+		break;
+	case BROKEN:
+		break;
+	}
+}
+\stoptyping
+
+\SlideTitle {Реализация (3)}
+\starttyping
+int main(int argc, char *argv[])
+{
+	enum event event;
+	
+	while (1) {
+		char command[128];
+
+		fgets(command, sizeof(command), stdin);
+		if (!strncmp(command, "turn-on", 7))
+			event = TURN_ON;
+		else if (!strncmp(command, "turn-off", 8))
+			event = TURN_OFF;
+		else if (!strncmp(command, "brick", 5))
+			event = BRICK;
+
+		run_state_machine(event);
+	}
+
+	return 0;
+}
+\stoptyping
+
+\SlideTitle {Конечный автомат + select()}
+\startitemize
+\item  Поскольку переход между состояниями меняет внутреннее состояние
+программы и обычно не требует блокирующих вызовов, функция перехода может
+безопасно вызываться из цикла обработки событий. Это позволяет поочередно
+исполнять несколько экземпляров одного конечного автомата в одном многозадачном
+приложении. Каждый экземпляр в нем можно рассматривать как одну задачу.
+\item Программа должна выполнять трансляцию низкоуровневых событий,
+детектируемых с помощью функции select(), в высокоуровневые события, подаваемые
+на вход конечного автомата. Примеры низкоуровневых событий: чтение запроса из
+сокета, истечение таймаута, разрыв соединения, установка нового соединения.
+Высокоуровневые события представляются переменными перечислимого типа.
 \stopitemize
+
+\SlideTitle {Многозадачный сервер}
+\startitemize
+\item Все входные сигналы (новые соединения, новые запросы, таймауты)
+обрабатываются циклом обработки событий на основе вызова {\tt select()}.
+\item Логика обслуживания каждого отдельного соединения описывается конечным
+автоматом.
+\item При установке нового соединения программа создает новый экземпляр
+конечного автомата.
+\item При получении нового запроса или при срабатывании таймаута программа
+определяет экземпляр конечного автомата (соединение), к которому они относятся,
+и передает их на вход автомата в качестве событий.
+\item При переходе между состояниями автомата программа меняет внутреннее
+состояние (задает переменные, устанавливает таймеры), а также формирует
+выходные сигналы (ответы на запросы и т.д.).
+\stopitemize
+
+\SlideTitle {Задача: повторитель символов}
+\IncludePicture[horizontal][diagrams/repeater.pdf]
 
 \stopcomponent
