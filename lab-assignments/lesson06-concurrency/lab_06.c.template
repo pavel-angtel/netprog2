@@ -21,8 +21,8 @@
 enum state {
 	STOP,
 	ECHO,
-	DELAY,
-	WAIT,
+	PAUSE,
+	LATCH,
 	GENERATE,
 };
 
@@ -44,8 +44,8 @@ struct repeater {
 
 	enum state state;
 
-	/* Данные для состояния DELAY. */
-	struct timeval delay_expiration;
+	/* Данные для состояния PAUSE. */
+	struct timeval pause_expiration;
 
 	/* Данные для состояния GENERATE. */
 	struct timeval period_expiration;
@@ -59,11 +59,31 @@ static const char *state2str(enum state state)
 	const char *strings[] = {
 		[STOP] = "stop",
 		[ECHO] = "echo",
-		[DELAY] = "delay",
-		[WAIT] = "wait",
+		[PAUSE] = "pause",
+		[LATCH] = "latch",
 		[GENERATE] = "generate",
 	};
 	return strings[state];
+}
+
+static const char *event2str(int event)
+{
+	static char str[2];
+
+	switch (event) {
+	case PERIOD_EXPIRATION:
+		return "period-expiration";
+	case GENERATE_EXPIRATION:
+		return "generate-expiration";
+	case CONNECTION_CLOSED:
+		return "connection-closed";
+	default:
+		break;
+	}
+	if (!isalnum(event))
+		return NULL;
+	sprintf(str, "%c", event);
+	return str;
 }
 
 static int init_repeater(struct repeater *r, unsigned int index)
@@ -125,10 +145,15 @@ static int send_data(struct repeater *r, const char *fmt, ...)
 static void run_state_machine(struct repeater *r, int event)
 {
 	enum state old_state = r->state;
+	const char *event_str = event2str(event);
 	struct timeval now;
 	int ret;
 
-	printf("Received event %d in state %s\n", event, state2str(r->state));
+	if (!event_str)
+		return;
+
+	printf("Received event '%s' in state %s\n",
+	       event_str, state2str(r->state));
 
 	gettimeofday(&now, NULL);
 
@@ -136,11 +161,11 @@ static void run_state_machine(struct repeater *r, int event)
 	case STOP:
 		if (event == 'e')
 			r->state = ECHO;
-		else if (event == 'w')
-			r->state = WAIT;
+		else if (event == 'l')
+			r->state = LATCH;
 		break;
 	/* Фрагмент кода отвечает за обработку событий в состояниях ECHO и
-	 * DELAY. Чтобы отличать цифры, от управляющих символов, можно
+	 * PAUSE. Чтобы отличать цифры, от управляющих символов, можно
 	 * использовать функцию isdigit(). Для работы со временем использовать
 	 * макросы timeradd(), timersub(), timercmp(). Вывод повторяемых цифр
 	 * или времени до истечения задержки производится с помощью
@@ -149,7 +174,7 @@ static void run_state_machine(struct repeater *r, int event)
 
 	/* ... */
 
-	/* Дальнейший код отвечает за обработку событий в состояниях WAIT и
+	/* Дальнейший код отвечает за обработку событий в состояниях LATCH и
 	 * GENERATE.
 	 */
 
