@@ -81,7 +81,7 @@ int handle_requests(int data_sock)
 		char rx_buf[100];
 
 		ret = recv(data_sock, rx_buf, sizeof(rx_buf), 0);
-		if (ret == 0) }
+		if (ret == 0) {
 			break;
 		} else if (ret < 0 && errno == EWOULDBLOCK) {
 			printf("No request\n");
@@ -301,7 +301,7 @@ void event_dispatcher(void)
 			max_fd = data_socks[i];
 	}
 
-	select(max_fd + 1, fds, NULL, NULL, NULL);
+	select(max_fd + 1, &fds, NULL, NULL, NULL);
 
 	if (FD_ISSET(listen_sock, &fds))
 		handle_connections(listen_sock);
@@ -356,7 +356,7 @@ struct timeval connection_expiration_time;
 	/* timeout = connection_expiration_time - now */
 	timersub(&connection_expiration_time, &now, &timeout);
 
-	ret = select(max_fd + 1, fds, NULL, NULL, &timeout);
+	ret = select(max_fd + 1, &fds, NULL, NULL, &timeout);
 	if (ret == 0) {
 		/* Таймаут. */
 		close(data_socks[0]);
@@ -386,7 +386,7 @@ struct timeval connection_expiration_times[MAX_CONNECTIONS]
 			timeout = candidate;
 	}
 
-	ret = select(max_fd + 1, fds, NULL, NULL, &timeout);
+	ret = select(max_fd + 1, &fds, NULL, NULL, &timeout);
 	if (ret == 0) {
 		/* Могло пройти больше времени, чем timeout. */
 		gettimeofday(&now, NULL);
