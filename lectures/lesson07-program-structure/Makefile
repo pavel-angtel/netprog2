@@ -1,13 +1,17 @@
 
-DOCS = containers-slides
+DOCS = program-structure-slides
 DIAGRAMS = \
-	   diagrams/addition-deletion.pdf \
-	   diagrams/app-structure.pdf \
 	   diagrams/avl-tree.pdf \
-	   diagrams/container-of.pdf \
+	   diagrams/binary-tree-dictionary.pdf \
+	   diagrams/dynamic-resources.pdf \
+	   diagrams/event-queue.pdf \
 	   diagrams/generic-list.pdf \
-	   diagrams/key-search.pdf \
-	   diagrams/search-tree.pdf \
-	   diagrams/simple-list.pdf
+	   diagrams/layering.pdf \
+	   diagrams/multiple-implementations.pdf \
+	   diagrams/resource-indexing.pdf \
+	   diagrams/sensors.pdf \
+	   diagrams/sensors-task.pdf \
+	   diagrams/simple-dictionary.pdf \
+	   diagrams/tree-balancing.pdf
 
 include ../Makefile.common

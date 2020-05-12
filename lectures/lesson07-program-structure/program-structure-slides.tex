@@ -1,0 +1,441 @@
+
+\startcomponent program-structure-slides
+\environment slides-env
+
+\setupTitle
+  [ title={ПО сетевых устройств},
+   author={Трещановский Павел Александрович, к.т.н.},
+     date={\date},
+  ]
+\placeTitle
+
+\SlideTitle {Текущее положение}
+\startitemize
+\item Сервер, принимающий и обрабатывающий TCP-соединения с помощью сокета.
+\item Внутренние объекты сервера могут представляться в виде набора сетевых
+ресурсов. Чтение и изменение ресурсов производится через вызов методов (GET,
+POST, PUT и т.д.).
+\item Сервер поддерживает одновременное исполнение нескольких задач с помощью
+цикла обработки событий.
+\item Задача может представлять собой исполнение экземпляра конечного автомата.
+\stopitemize
+
+Какие еще бывают задачи? Какого их внутренняя структура? Как организовано
+взаимодействие между их компонентами?
+
+\SlideTitle {Отдельные аспекты программной архитектуры}
+\startitemize
+\item Разбиение на уровни абстракции.
+\item Динамическое создание и удаление ресурсов.
+\item Полиморфные ресурсы - общий API для ресурсов с разной реализацией.
+\item Эффективное индексирование ресурсов с помощью словарей.
+\item Обмен данными между уровнями абстракции через очередь событий.
+\stopitemize
+
+\SlideTitle {Многоуровневое приложение}
+\IncludePicture[horizontal][diagrams/layering.pdf]
+
+\SlideTitle {Многоуровневое приложение, код}
+\starttyping
+int post(struct resource *res, const char *http_request)
+{
+	struct implementation *impl = res->implementation;
+
+	parse_http_request(http_request, ...);
+
+	impl_post(impl, ...);
+
+	send_http_response(...);
+}
+
+int impl_post(struct implementation *impl, ...)
+{
+	run_state_machine(impl->state, event);
+}
+
+/* Функция скрыта от высокоуровневого модуля */
+static run_state_machine(enum state state, enum event event)
+{
+	...
+}
+\stoptyping
+
+\SlideTitle {Динамическое создание ресурсов}
+\IncludePicture[horizontal][diagrams/dynamic-resources.pdf]
+
+\SlideTitle {Создание и регистрация ресурсов}
+\starttyping
+int register_resource(struct implementation *impl, ...)
+{
+	struct resource *res;
+
+	res = calloc(1, sizeof(*res));
+	res->implementation = impl;
+}
+
+int put(const char *http_request)
+{
+	struct resource *res;
+	struct implementation *impl;
+
+	...
+
+	res = calloc(1, sizeof(*res));
+
+	impl = create_implementation(res, ...);
+	res->implementation = impl;
+}
+\stoptyping
+
+
+\SlideTitle {Поддержка нескольких реализаций}
+\IncludePicture[horizontal][diagrams/multiple-implementations.pdf]
+
+\SlideTitle {Простой вариант}
+\starttyping
+int register_resource(enum resource_type type, struct implementation1 *impl1, ...)
+{
+	struct resource *res = calloc(1, sizeof(*res));
+
+	res->type = type;
+	if (type == IMPL1)
+		res->implementation1 = impl1;
+}
+
+int post(struct resource *res, const char *http_request)
+{
+	...
+
+	switch (res->type) {
+	case IMPL1:
+		impl1_post(impl, ...);
+		break;
+	case IMPL2:
+		impl2_post(impl, ...);
+		break;
+	}
+}
+\stoptyping
+
+\SlideTitle {Обратный вызов}
+\starttyping
+typedef int (*callback_t)(void *callback_data);
+
+int register_resource(callback_t callback, void *callback_data)
+{
+	struct resource *res = calloc(1, sizeof(*res));
+
+	res->callback = callback;
+	res->callback_data = callback_data;
+}
+
+int post(struct resource *res, const char *http_request)
+{
+	....
+
+	res->callback(res->callback_data);
+}
+
+static int impl1_post(void *callback_data)
+{
+	struct implementation1 *impl = callback_data;
+	...
+}
+\stoptyping
+
+\SlideTitle {Замечания}
+\startitemize
+\item Обратный вызов - функция, которая вызывается через указатель.
+\item {\tt callback_t} - тип этой функции.
+\item {\tt callback_data} - данные, которые надо передать в обратный вызов во
+время его исполнения. Тип {\tt void *} позволяет каждой реализации ресурса
+использовать данные своего типа (например, {\tt struct implementation1} или
+{\tt struct implementation2}). Приведение от указателя на структуру к {\tt void
+*} и наоборот происходит автоматически.
+\item Указатель на функцию и указатель {\tt callback_data} записывается в
+объект {\tt struct resource} во время регистрации ресурса ({\tt
+resource_register())}.
+\stopitemize
+
+\SlideTitle {Таблица функций}
+\starttyping
+struct resource_operations {
+	int (*get)(struct resource *res, ...);
+	int (*post)(struct resource *res, ...);
+};
+
+int register_resource(struct resource_operations *ops, void *private_data)
+{
+	res->operations = ops;
+	res->private_data = private_data;
+}
+
+int post(struct resource *res, const char *http_request)
+{
+	....
+	res->operations->post(res);
+}
+
+static int impl1_post(struct resource *res)
+{
+	struct implementation1 *impl = res->private_data;
+	...
+}
+\stoptyping
+
+\SlideTitle {Индексация ресурсов}
+\IncludePicture[horizontal][diagrams/resource-indexing.pdf]
+
+\SlideTitle {Обычный массив}
+\externalfigure[diagrams/simple-dictionary.pdf][height=0.16\textheight]
+\starttyping
+struct resource {
+	char *key;
+	struct implementation *impl;
+} *resource[MAX_RESOURCES];
+
+struct resource *find_resource(const char *key)
+{
+	int i;
+
+	for (i = 0; i < MAX_RESOURCE; i++) {
+		struct resource *r = &resources[i];
+
+		if (r && !strcmp(r->key, key))
+			return r;
+	}
+	return NULL;
+}
+\stoptyping
+
+\SlideTitle {Двоичное дерево}
+\IncludePicture[horizontal][diagrams/binary-tree-dictionary.pdf]
+
+\SlideTitle {Балансирование дерева}
+\IncludePicture[horizontal][diagrams/tree-balancing.pdf]
+
+\SlideTitle {Самобалансирующееся дерево}
+\startitemize
+\item Время поиска элемента словаря в худшем случае определяется глубиной
+дерева. Наименьшее время достигается при равномерном распределении узлов по
+всем ветвям дерева.
+\item Самобалансирующееся дерево - дерево, у которого распределение узлов по
+ветвям происходит автоматически при добавлении нового узла.
+\item AVL - одно из самобалансирующихся деревьев.
+\item Библиотека libubox предоставляет реализацию деревьев AVL - {\tt struct
+avl_tree}.
+\item {\tt struct avl_tree} скрывает двоичное дерево и предоставляет приложение
+API ассоциативного массива (словаря) с возможностью добавления и поиска по ключу.
+\item Ключом может быть объект произвольного типа, в частности, строка. При
+инициализации словарю надо передавать функцию сравнения ключей данного типа
+({\tt avl_strcmp} для строк).
+\stopitemize
+
+\SlideTitle {struct avl_tree}
+\IncludePicture[horizontal][diagrams/avl-tree.pdf]
+
+\SlideTitle {Преобразование указателей}
+\starttyping
+struct resource {
+	struct avl_node anode;
+};
+\stoptyping
+
+Мы добавляем и извлекаем из словаря объекты struct avl_node, встроенные в
+struct resource.  Как из указателя на struct avl_node получить указатель на
+struct resource?
+
+\starttyping
+/* Смещение между адресом родительского объекта типа type и адресом его поля
+member. */
+#define offsetof(type, member)	((size_t)&((type *)0)->member)
+
+/* Получение указателя на родительский объект типа type из указателя ptr на его
+поле member. */
+#define container_of(ptr, type, member) ({		\
+	void *__mptr = (void *)(ptr);			\
+	((type *)(__mptr - offsetof(type, member))); })
+
+int function(struct avl_node *n)
+{
+	struct resource *res = container_of(n, struct resource, anode);
+}
+\stoptyping
+
+
+\SlideTitle {Добавление, поиск и удаление}
+\starttyping
+struct avl_tree dict;
+struct resource {
+	char *key;
+	struct avl_node anode;
+} *res1, *res2;
+
+/* avl_strcmp - функция сравнения узлов двоичного дерева. */
+avl_init(&dict, avl_strcmp, 0, NULL);
+
+res1 = calloc(1, sizeof(*res1));
+res1->key = strdup("some-resource-key");
+res1->anode.key = res1->key;
+
+ret = avl_insert(&dict, &res1->anode);
+if (ret < 0)
+	fprintf(stderr, "Key '%s' is already present", res1->key);
+
+res2 = avl_find_element(&dict, "another-key", res2, anode);
+
+avl_delete(&dict, &res2->anode);
+free(res2->key);
+free(res2);
+\stoptyping
+
+\SlideTitle {Перебор всех элементов}
+\starttyping
+struct avl_tree dict;
+
+struct resource *res, *next_res;
+
+avl_init(&dict, avl_strcmp, 0, NULL);
+
+...
+
+avl_for_each_element(&dict, res, anode) {
+	printf("%s\n", res->key);
+	/* Нельзя удалять res из словаря!! */
+}
+
+/* Если в теле цикла удаляются элементы словаря, то используется вариант _safe. */
+avl_for_each_element_safe(&dict, res, anode, next_res) {
+	avl_delete(&dict, &res->anode);
+	free(res->key);
+	free(res);
+}
+\stoptyping
+
+\SlideTitle {Сетевой ресурс с очередью событий}
+\IncludePicture[horizontal][diagrams/event-queue.pdf]
+
+\SlideTitle {Связный список struct list_head}
+\IncludePicture[horizontal][diagrams/generic-list.pdf]
+
+\SlideTitle {Добавление, поиск и удаление}
+\starttyping
+struct list_head list;
+struct event {
+	struct list_head entry;
+} *event1, *event2;
+
+INIT_LIST_HEAD(&list);
+
+event1 = calloc(1, sizeof(*event1));
+
+/* Добавление в конец списка. */
+list_add_tail(&event1->entry, &list);
+
+event2 = list_first_entry(&list, struct event, entry);
+
+list_del(&event2->entry);
+\stoptyping
+
+\SlideTitle {Перебор всех элементов}
+\starttyping
+struct list_head list;
+
+struct event *event, *next_event;
+int i = 0;
+
+list_for_each_entry(event, &list, entry) {
+	printf("List entry %d\n", i++);
+	/* Нельзя удалять event из списка!! */
+}
+
+/* Если в теле цикла удаляются элементы списка, то используется вариант _safe. */
+list_for_each_entry_safe(event, next_event, &list, entry) {
+	list_del(&event->entry);
+	free(event);
+}
+\stoptyping
+
+\SlideTitle {Замечания}
+\startitemize
+\item Объекты типа {\tt struct list_head} выполняют 2 роли: заголовок (список в
+целом) и элемент списка. Элемент списка list_head должен быть встроен в {\tt
+struct event} (или другую пользовательскую структуру). Заголовок {\em не}
+включается в {\tt struct resource}.
+\item Пустой список представляется в программе заголовком без элементов списка.
+Заголовок в таком случае указывает сам на себя.
+\item Каждое поле типа {\tt struct list_head} внутри {\tt struct resource}
+отвечает за включение ресурса в один список. Если требуется включить ресурс в N
+списков, то в структуре должно быть N полей {\tt struct list_head}.
+\stopitemize
+
+\SlideTitle {Устройства ввода в Linux}
+\startitemize
+\item Устройства ввода (клавиатура, мышь, кнопки на корпусе и пр.) представлены
+в Linux в виде файлов {\em символьных устройства} в каталоге /dev/input.
+\item Физическое устройство ввода соответствует одному или нескольким файлам в
+/dev/input.
+\item Каждое символьное устройство содержит очередь событий.
+\item Событие имеет тип (нажатие клавиши, движение мыши), код (какая клавиша
+нажата) и значение (нажата или отжата).
+\item Приложения работают с устройствами через библиотеку libevdev.
+\stopitemize
+
+\SlideTitle {Опрос датчиков}
+\IncludePicture[horizontal][diagrams/sensors.pdf]
+
+\SlideTitle {Сканирование}
+\starttyping
+static int scan_devices(struct avl_tree *devices)
+{
+	int fd;
+	struct libevdev *evdev;
+
+	fd = open("/dev/input/event5", O_RDONLY | O_NONBLOCK);
+	libevdev_new_from_fd(fd, &evdev);
+
+	if (libevdev_has_event_type(evdev, EV_REL) &&
+	    libevdev_has_event_type(evdev, EV_ABS)) {
+		struct mouse *mouse;
+
+		mouse = calloc(1, sizeof(*mouse));
+		mouse->evdev = evdev;
+
+		/* Добавление устройства в словарь,
+		   регистрация обратного вызова read_mouse_event. */
+		ret = register_device(devices, "mouse", evdev,
+				      NULL, read_mouse_event, mouse);
+	}
+}
+\stoptyping
+
+\SlideTitle {Чтение событий evdev}
+\starttyping
+static int read_mouse_event(char value[], void *dev)
+{
+	struct mouse *mouse = dev;
+	struct input_event ev;
+
+	while (1) {
+		ret = libevdev_next_event(mouse->evdev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
+		/* События может не быть в очереди. libevdev передает значение
+		errno в коде статуса.*/
+		if (ret == -EAGAIN)
+			return 0;
+
+		if (ev.type == EV_KEY && ev.code == BTN_LEFT && ev.value == 1) {
+			/* Нажата левая кнопка мыши. */
+			break;
+		} else if (ev.type == EV_KEY && ev.code == BTN_RIGHT && ev.value == 1) {
+			/* Нажата правая кнопка мыши. */
+			break;
+		}
+	}
+	return 0;
+}
+\stoptyping
+
+\SlideTitle {Задание}
+\IncludePicture[horizontal][diagrams/sensors-task.pdf]
+
+\stopcomponent
