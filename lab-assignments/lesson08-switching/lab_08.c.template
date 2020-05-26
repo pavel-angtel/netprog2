@@ -31,7 +31,7 @@ struct mac_entry {
 };
 
 struct eth_switch_port {
-	int port_no;
+	struct list_head lentry;
 	int ifindex;
 	int sock;
 };
@@ -49,7 +49,6 @@ struct eth_frame {
 	struct ether_addr dest;
 
 	struct eth_switch_port *input_port;
-	unsigned int output_port_mask;
 };
 
 int avl_maccmp(const void *k1, const void *k2, void *ptr)
@@ -60,7 +59,12 @@ int avl_maccmp(const void *k1, const void *k2, void *ptr)
 	memcpy(&mac1_int, mac1, sizeof(*mac1));
 	memcpy(&mac2_int, mac2, sizeof(*mac2));
 
-	return mac1_int - mac2_int;
+	if (mac1_int - mac2_int > 0)
+		return 1;
+	else if (mac1_int - mac2_int < 0)
+		return -1;
+	else
+		return 0;
 }
 
 static bool frame_is_broadcast(struct eth_frame *frame)
@@ -138,7 +142,7 @@ static int learn_mac_address(struct eth_switch *sw, struct eth_frame *frame)
  */
 static int filter_output_ports(struct eth_switch *sw,
 			       struct eth_frame *frame,
-			       unsigned int *output_port_mask)
+			       struct list_head *output_ports)
 {
 
 	/* ... */
@@ -170,22 +174,26 @@ static int rx_frame(struct eth_switch_port *port, struct eth_frame *frame)
 
 	/* ... */
 
-	/* printf("Received frame (SRC %s DST %s) on port %d\n",
-	 *      ether_ntoa(&frame->source),
-	 *      ether_ntoa(&frame->dest),
-	 *      port->ifindex);
+	/* {
+	 *	char sa_str[20], da_str[20];
+	 *	printf("Received frame: SA %s DA %s on port %d\n",
+	 *	       ether_ntoa_r(&frame.source, sa_str),
+	 *	       ether_ntoa_r(&frame.dest, da_str),
+	 *	       port->ifindex);
+	 *}
 	 */
 	return 0;
 }
 
-static int handle_input_frame(struct eth_switch *sw, struct eth_switch_port *port)
+static int handle_input_frame(struct eth_switch *sw, struct eth_switch_port *input_port)
 {
 	struct eth_frame frame;
-	unsigned int output_port_mask;
+	struct list_head output_ports;
+	struct eth_switch_port *port;
 	int ret;
 	int i;
 
-	ret = rx_frame(port, &frame);
+	ret = rx_frame(input_port, &frame);
 	if (ret < 0)
 		goto on_error;
 	else if (ret == 0)
@@ -195,33 +203,32 @@ static int handle_input_frame(struct eth_switch *sw, struct eth_switch_port *por
 	if (ret < 0)
 		goto on_error;
 
-	output_port_mask = (1 << sw->nports) - 1;
-	output_port_mask &= ~(1 << port->port_no);
+	INIT_LIST_HEAD(&output_ports);
+	for (i = 0; i < sw->nports; i++)
+		if (&sw->ports[i] != input_port)
+			list_add(&sw->ports[i].lentry, &output_ports);
 
 	if (!frame_is_broadcast(&frame)) {
-		ret = filter_output_ports(sw, &frame, &output_port_mask);
+		ret = filter_output_ports(sw, &frame, &output_ports);
 		if (ret < 0)
 			goto on_error;
 	}
 
-	for (i = 0; i < sw->nports; i++) {
-		if ((1 << i) & output_port_mask) {
-			ret = tx_frame(&sw->ports[i], &frame);
-			if (ret < 0)
-				goto on_error;
-		}
+	list_for_each_entry(port, &output_ports, lentry) {
+		ret = tx_frame(&sw->ports[i], &frame);
+		if (ret < 0)
+			goto on_error;
 	}
 	return 0;
 on_error:
 	return -1;
 }
 
-/* Функция запоминает в полях порта @port номером порта @port_no и индекс
- * интерфейса @ifindex. Далее функция создает сокет типа AF_PACKET и
- * привязывает его к интерфейсу с индексом @ifindex. Используются функции
- * socket() и bind().
+/* Функция запоминает в поле порта индекс интерфейса @ifindex. Далее функция
+ * создает сокет типа AF_PACKET и привязывает его к интерфейсу с индексом
+ * @ifindex. Используются функции socket() и bind().
  */
-static int init_switch_port(struct eth_switch_port *port, int port_no, int ifindex)
+static int init_switch_port(struct eth_switch_port *port, int ifindex)
 {
 
 	/* ... */
@@ -248,7 +255,7 @@ static int init_switch(struct eth_switch *sw, char *indices[])
 	for (i = 0; i < MAX_SWITCH_PORTS && indices[i]; i++) {
 		int ifindex = atoi(indices[i]);
 
-		ret = init_switch_port(&sw->ports[i], i, ifindex);
+		ret = init_switch_port(&sw->ports[i], ifindex);
 		if (ret < 0)
 			goto on_error;
 		sw->nports++;
