@@ -2,6 +2,8 @@
 \startcomponent switch-slides
 \environment slides-env
 
+\setupcombinations[distance=1cm]
+
 \setupTitle
   [ title={ПО сетевых устройств},
    author={Трещановский Павел Александрович, к.т.н.},
@@ -9,133 +11,301 @@
   ]
 \placeTitle
 
-\SlideTitle {Сетевой, канальный и физический уровни}
-\IncludePicture[horizontal][diagrams/global-network.pdf]
-
-\SlideTitle {Локальные сети}
+\SlideTitle {Обработка трафика}
+Задачи:
 \startitemize
-\item В локальных сетях поддерживается широковещательная (т.е. всем узлам сети)
-рассылка.
-\item Зачем нужна широковещательная рассылка? Для разрешения IP-адресов в
-MAC-адреса. Т.е. спрашиваем всех, где находится IP-адрес X.X.X.X, обладатель
-этого адреса отвечает и сообщает свой MAC-адрес.
-\item Если сеть с общей средой передачи, то все кадры широковещательные
-(например, WiFi).
-\item Почти все локальные сети - Ethernet или родственные (WiFi).
-\item Канальный уровень применительно к Ethernet также называется MAC - Media
-Access Control (управление доступом к среде передачи).
-\item Физичиские уровни (PHY) для Ethernet: 100Base-TX, 1000Base-T (медь),
-100Base-FX, 1000Base-X (оптика).
+\item программная реализация коммутатор Ethernet или маршрутизатора IP,
+\item списки контроля доступа (ACL - access control list),
+\item глубокий анализ пакетов (DPI - deep packet inspection),
+\item реализация служебных протоколов (LLDP, STP, UDLD и пр.),
+\item шифрование трафика
+\item и др.
 \stopitemize
+
+\SlideTitle {Уровень сетевых интерфейсов}
+\IncludePicture[horizontal][diagrams/low-level-traffic.pdf]
+
+\SlideTitle {Сокеты семейства AF_PACKET}
+\starttyping
+	int sock;
+	struct sockaddr_ll addr;
+
+	/* AF_PACKET - семейство адресов канального уровня;
+	 * SOCK_RAW - тип сокета, при котором приложению передается вместе с
+	 * данными заголовок канального уровня;
+	 * EHT_P_ALL - принимать данные любого протокола сетевого уровня. */
+	sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+
+	memset(&addr, 0, sizeof(bind_addr));
+	addr.sll_family   = AF_PACKET;
+	addr.sll_ifindex  = ifindex; /* Индекс сетевого интерфейса */
+	/* addr.sll_addr = ... Адрес канального уровня (здесь не используется).
+	   addr.sll_halen = ...  */
+	bind(sock, (struct sockaddr*)&addr, sizeof(addr));
+\stoptyping
 
 \SlideTitle {Структура Ethernet-кадра}
 \externalfigure[diagrams/ethernet-frame.pdf][width=\textwidth]
 \startitemize
 \item Если значение Ethertype/Length меньше 0x800, то поле содержит длину
 кадра. В противном случае - тип кадра (IP, ARP и т.д.).
-\item Первые 3 байта MAC-адреса - OUI (Organizationally Unique Identifier), код
-производителя.
 \item CRC32 обычно устанавливается и проверяется на аппаратном уровне.
 \item Размер кадра - от 64 до 1522 байтов.
+\item ff:ff:ff:ff:ff:ff - широковещательный адрес. Кадр с таким адресом
+назначения доставляется всем узлам сети.
 \stopitemize
 
-\SlideTitle {Передача Ethernet-кадра}
+\SlideTitle {Стандартная структура {\tt struct ethhdr}}
+\starttyping
+#define ETH_ALEN 6
+
+struct ethhdr {
+	uint8_t h_dest[ETH_ALEN];
+	uint8_t h_source[ETH_ALEN];
+	uint16_t h_proto;
+};
+
+struct ether_addr {
+	uint8_t ether_addr_octet[ETH_ALEN];
+};
+
+extern char *ether_ntoa(const struct ether_addr *addr);
+
+void some_function(void) {
+	struct ethhdr *eth_header;
+
+	printf("Destination: %s, source: %s\n",
+	       ether_ntoa((struct ether_addr *)eth_header->h_dest),
+	       ether_ntoa((struct ether_addr *)eth_header->h_source));
+}
+\stoptyping
+
+\SlideTitle {Прием кадров из сокета AF_PACKET}
+\starttyping
+	int sock;
+	struct sockaddr_ll rx_addr;
+	char pkt_buf[2048];
+	struct ethhdr *eth_header;
+	struct ether_addr da;
+
+	sock = socket(AF_PACKET, SOCK_RAW, 0);
+
+	...
+
+	/* rx_addr - информация об отправителе кадра. */
+	recvfrom(sock, pkt_buf, sizeof(pkt_buf), 0, &rx_addr, sizeof(rx_addr));
+
+	/* Игнорируем передаваемые кадры. */
+	if (rx_addr.sll_pkttype == PACKET_OUTGOING)
+		return 0;
+
+	eth_header = pkt_buf;
+
+	memcpy(&da, eth_header->h_dest, ETH_ALEN);
+	printf("Destination address: %s\n", ether_ntoa(&da));
+\stoptyping
+
+\SlideTitle {Коммутаторы Ethernet}
+\startcombination
+\framed{\externalfigure[diagrams/ethernet-switch.jpg][width=0.55\textwidth]}{}
+\framed{\externalfigure[diagrams/rj-45.jpg][width=0.4\textwidth]}{}
+\stopcombination
+
+\SlideTitle {Канальный и физический уровни}
 \IncludePicture[horizontal][diagrams/frame-transmission.pdf]
+
+\SlideTitle {Терминология}
+\startitemize
+\item В сети Ethernet передаются {\em кадры} (англ. frame). В IP - дейтаграммы,
+TCP - сегменты и др.
+\item Узлы объединяются в сеть Ethernet с помощью {\em повторителей} и {\em
+коммутаторов} (switch).
+\item Коммутация производится между {\em портами}.
+\item MAC (Media Access Control) - доступ к среде передачи. Название уровня
+абстракции в стандарте Ethernet. Существуют различные методы доступа в как
+сетях Ethernet, так и в сетях на основе других технологий.
+\item MAC-адрес - адрес канального уровня. Обычно термин применяется к
+Ethernet.
+\item CSMA/CD (Carrier Sense Multiple Access with Collision Detection) - один
+из методов доступа в сети Ethernet.
+\stopitemize
 
 \SlideTitle {Сеть на основе повторителя}
 \IncludePicture[horizontal][diagrams/repeater.pdf]
 
-\SlideTitle {Коллизия в полудуплексных сетях}
-\IncludePicture[horizontal][diagrams/collision.pdf]
+\SlideTitle {Передача кадров через повторитель}
+\IncludePicture[horizontal][diagrams/repeater-transmission.pdf]
+
+\SlideTitle {Замечания}
+\startitemize
+\item Повторитель не буферизирует и не анализирует принимаемые принимаемые
+кадры. Принимаемые данные побайтово повторяются на выходе.
+\item Повторитель всегда передает данные на все выходные порты.
+\item Одновременно передавать данные может только один узел сети. Если
+несколько узлов начинают передачу в один момент времени, то наступает {\em
+коллизия} и передача прекращается. Повторная попытка передачи производится
+после случайной паузы.
+\item Коллизии и широковещательные рассылки не позволяют полностью использовать
+пропускную способность сети.
+\item Повторитель не имеет своего MAC-адреса и не \quote{виден} другим
+устройствам сети.
+\stopitemize
 
 \SlideTitle {Сеть на основе коммутатора}
 \IncludePicture[horizontal][diagrams/switch.pdf]
 
-\SlideTitle {Буферизация кадров}
-\IncludePicture[horizontal][diagrams/switch-buffer.pdf]
+\SlideTitle {Передача кадров через коммутатор}
+\IncludePicture[horizontal][diagrams/switch-transmission.pdf]
 
-\SlideTitle {Изучение MAC-адресов}
-\IncludePicture[horizontal][diagrams/learning.pdf]
+\SlideTitle {Очереди в коммутаторе}
+\IncludePicture[horizontal][diagrams/switch-queues.pdf]
 
-\SlideTitle {Устаревание MAC-адресов}
-\IncludePicture[horizontal][diagrams/address-aging.pdf]
-
-\SlideTitle {Коммутатор Корунд}
-\IncludePicture[horizontal][diagrams/managed-switch.pdf]
-
-\SlideTitle {Сокеты семейства AF_PACKET}
-\starttyping
-	#include <linux/if_packet.h>
-	#include <net/ethernet.h>
-
-	int sock;
-	struct sockaddr_ll bind_addr, rx_addr;
-	char pkt_buf[2048];
-	struct ether_header *eth;
-	struct ether_addr *da;
-
-	sock = socket(AF_PACKET, SOCK_RAW, 0);
-
-	memset(&bind_addr, 0, sizeof(bind_addr));
-	bind_addr.sll_family   = AF_PACKET;
-	bind_addr.sll_protocol = htons(ETH_P_ALL);
-	bind_addr.sll_ifindex  = ifindex; /* Индекс можно найти в выводе ip addr */
-	bind(sock, (struct sockaddr*)&bind_addr, sizeof(bind_addr));
-
-	recvfrom(sock, pkt_buf, sizeof(pkt_buf), 0, &rx_addr, sizeof(rx_addr));
-	if (rx_addr.sll_pkttype == PACKET_OTHERHOST) {
-		eth = pkt_buf;
-		da = (struct ether_addr *)eth->ether_dhost;
-		printf("Destination address: %s\n", ether_ntoa(a));
-	}
-\stoptyping
-
-\SlideTitle {Виртуализация сетевого стека}
+\SlideTitle {Правила работы таблицы MAC-адресов}
 \startitemize
-\item Если в Linux настроено два интерфейса eth0 и eth1 192.168.0.8 и
-192.168.0.9, то команда ping 192.168.0.9 {\tt не} будет передавать запрос через
-eth0.
-\item Почему - общая таблица маршрутизации. Linux знает, что оба адреса локальные.
-\item Нужна виртуализация. В Linux'е виртуализация осуществляется с помощью
-контейнеров (aka LXC-контейнеры).
-\item Контейнер виртуализирует среду исполнения процесса, а не всей ОС.
-\item Контейнер состоит из пространств имен (namespace).
-\item Есть пространства имен для процессов, пользователей, сетевого стека.
-\item Пространства имен можно использовать по отдельности, без полной
-виртуализации.
+\item Каждая запись в таблице - кортеж (MAC-адрес, номер порта).
+\item При приеме каждого кадра производится изучение (learning) его адреса {\em
+источника}. Для него создается запись в таблице, куда заносится номер входного
+порта.
+\item Если запись уже была, номер порта обновляется.
+\item Далее по таблице производится определение выходного порта. Для
+осуществляется поиск записи по адресу {\em назначения} принятого кадра. Если
+запись есть, то номер порта в ней является номером выходного порта для кадра.
+\item Если записи нет, то кадр передается на все порты, кроме входного.
+\item Поиск выходного порта не производится для широковещательных кадров.
 \stopitemize
 
-\SlideTitle {Запуск приложений в определенном пространстве имен}
-Вывод списка интерфейсов в сетевом пространстве имен /etc/ns/ns1:
-\starttyping
-# nsenter --net=/etc/ns/ns1 ip addr
-1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN qlen 1000
-    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-4: ge2@if2: <NO-CARRIER,BROADCAST,MULTICAST,UP,M-DOWN> ...
-    link/ether 68:eb:c5:00:01:02 brd ff:ff:ff:ff:ff:ff
-    inet 192.168.0.10/24 scope global ge2
-       valid_lft forever preferred_lft forever
-\stoptyping
-Замечание. Имена /etc/ns/nsX специфичны для Корунда. На других системах
-именование пространств имен будет отличаться.
-
-\SlideTitle {Схема виртуальной локальной сети}
-\IncludePicture[horizontal][diagrams/virtual-network.pdf]
+\SlideTitle {Передача кадров при устаревании адреса}
+\IncludePicture[horizontal][diagrams/switch-aging.pdf]
 
 \SlideTitle {Замечания}
 \startitemize
-\item Тестирование осуществляется с помощью утилиты ping.
-\item Аргументом ping является IP-адрес. Чтобы узнать MAC-адрес, Linux
-отправляет широковещательный ARP-запрос. Обладатель указанного адреса
-возвращает ARP-ответ. Только после этого отправляется ICMP-запрос.
-\item Что должно быть обязательно проверено.
-\startitemize
-\item Если адрес не изучен, кадр отправляется на все порты.
-\item Если изучен, то только на один.
-\item Если поменять порт подключения виртуального компьютера, к которому
-периодически отправляются ICMP-запросы, то должна произойти временная потеря
-связи и последующим автоматическим восстановлением.
+\item Таблица MAC-адресов позволяет уменьшить количество широковещательных
+рассылок. Благодаря этому коммутатор эффективнее использует пропускную
+способность сети.
+\item Недостаток таблицы MAC-адресов - при изменении топологии сети часть
+записей становится недействительными. Из-за этого возможна потеря связи между
+узлами.
+\item Смысл устаревание записей в таблице - гарантировать удаление
+недействительных записей и последующее создание новых (действительных) записей.
+\item Так как коммутатор анализирует заголовок кадра, все принимаемые кадры
+буферизируются (принцип работы store and forward).
 \stopitemize
+
+\SlideTitle {Изменение топологии}
+\IncludePicture[horizontal][diagrams/switch-topology-change.pdf]
+
+\SlideTitle {Передача кадров при изменении топологии}
+\IncludePicture[horizontal][diagrams/topology-change.pdf]
+
+\SlideTitle {Программная реализация}
+\startitemize
+\item Коммутатором является приложение Linux.
+\item Портами коммутатора являются сетевые интерфейсы. Прием и передача
+осуществляется через сокеты AF_PACKET.
+\item Входной очередью порта является очередь пакетов сокета.
+\item Таблица MAC-адресов реализуется с помощью словаря {\tt struct avl_tree}.
+Ключом является MAC-адрес.
+\item Прием кадров и устаревание адресов осуществляется с помощью цикла
+обработки событий.
+\stopitemize
+
+\SlideTitle {Виртуальная сеть}
+\IncludePicture[horizontal][diagrams/virtual-topology.pdf]
+
+\SlideTitle {Сетевые пространства имен}
+\startitemize
+\item Пространства имен - механизм виртуализации, разделяющий ресурсы
+операционной системы на несколько частей. Доступ к каждой из них разрешается
+только определенной группе процессов. Примеры ресурсов: номера пользователей,
+файловая система, средства межпроцессного обмена.
+\item Сетевое пространство имен виртуализирует сетевой стек Linux (таблицу
+маршрутизации, сокеты и др.). Каждый сетевой интерфейс доступен только в одном
+сетевом пространстве имен.
+\item Каждый процесс находится в одном пространстве имен каждого типа.
+\item Назначения пространства имен для каждого типа происходит независимо. 2
+процесса могут находится в разных пространствах типа A, но при этом в одном
+пространстве типа B.
+\item Если у группы процессов совпадают все типы пространств имен, то эта
+группа находится в {\em контейнере}.
+\item В отличие от виртуальной машины, которая виртуализирует весь компьютер,
+контейнер виртуализирует среду исполнения процесса.
+\stopitemize
+
+\SlideTitle {Виртуальные интерфейсы}
+\IncludePicture[horizontal][diagrams/virtual-interfaces.pdf]
+
+\SlideTitle {Запуск приложений в определенном пространстве имен}
+Вывод списка интерфейсов в сетевом пространстве имен node_a:
+\starttyping
+# ip netns exec node_a ip addr
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+4: eth0@if39: <NO-CARRIER,BROADCAST,MULTICAST,UP,M-DOWN> ...
+    link/ether 68:eb:c5:00:01:02 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.20.6/24 scope global ge2
+       valid_lft forever preferred_lft forever
+\stoptyping
+Запуск командного интерпретатора в пространстве имен node_a:
+\starttyping
+# ip netns exec node_a bash
+\stoptyping
+Замечание. Имена node_a и eth_a специфичны для AngtelOS. На других системах
+именование пространств имен будет отличаться.
+
+\SlideTitle {Реализация таблицы адресов с помощью словаря}
+
+\starttyping
+/* Функция сравнения узлов двоичного дерева. */
+int avl_maccmp(const void *k1, const void *k2, void *ptr)
+{
+	const struct ether_addr *mac1 = k1, *mac2 = k2;
+	int64_t mac1_int = 0, mac2_int = 0;
+
+	memcpy(&mac1_int, mac1, sizeof(*mac1));
+	memcpy(&mac2_int, mac2, sizeof(*mac2));
+	if (mac1_int - mac2_int > 0)
+		return 1;
+	else if (mac1_int - mac2_int < 0)
+		return -1;
+	else
+		return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	struct avl_tree mac_table;
+	/* avl_maccmp вместо avl_strcmp! */
+	avl_init(&mac_table, avl_maccmp, false, NULL);
+}
+\stoptyping
+
+\SlideTitle {Структура программного коммутатора}
+\IncludePicture[horizontal][diagrams/software-bridge.pdf]
+
+\SlideTitle {Протоколы ARP и ICMP}
+\startitemize
+\item Утилита ping использует протокол ICMP. ping отправляет запрос (echo
+request) и ожидает получить ответ (echo reply). ICMP пакеты передаются внутри
+IP-дейтаграмм.
+\item ping отправляет запрос на определенный IP-адрес.
+\item Для передачи IP-дейтаграммы ядро должно знать соответствие между
+IP-адресом адресата и его MAC-адресом. Это соответствие устанавливает протокол
+ARP.
+\item Если в какой-то момент IP-адрес назначения неизвестен, ядро автоматически
+отправляет ARP-запрос. Адресат отправляет ARP-ответ, содержащий его MAC-адрес.
+\item Полученная информация заносится в ARP-таблицу в ядре.
+\item Записи в ARP-таблице устаревают через определенное время.
+\stopitemize
+
+\SlideTitle {Замечания по задаче}
+\startitemize
+\item Порты коммутатора задаются через аргументы командной строки. Для каждого
+порта указывается ifindex соответствующего интерфейса.
+\item ifindex интерфейсов можно узнать командой {\tt ip addr}.
+\item Работа коммутатора проверяется утилитами ping и tcpdump.
+\item ping запускается в отдельном сетевом пространстве имен. Аргументом
+является IP-адрес из другого пространства, {\em не} IP-адрес коммутатора. 
+\item При реализации повторителя возможность коллизий игнорируется.
 \stopitemize
 
 \stopcomponent
