@@ -68,15 +68,16 @@ struct ethhdr {
 struct ether_addr {
 	uint8_t ether_addr_octet[ETH_ALEN];
 };
-
 extern char *ether_ntoa(const struct ether_addr *addr);
 
 void some_function(void) {
 	struct ethhdr *eth_header;
-
-	printf("Destination: %s, source: %s\n",
-	       ether_ntoa((struct ether_addr *)eth_header->h_dest),
-	       ether_ntoa((struct ether_addr *)eth_header->h_source));
+	{
+		char sa_str[20], da_str[20];
+		printf("Source: %s destination %s\n",
+		       ether_ntoa_r((struct ether_addr *)&eth_header->h_source, sa_str),
+		       ether_ntoa_r((struct ether_addr *)&eth_header->h_dest, da_str));
+	}
 }
 \stoptyping
 
@@ -84,6 +85,7 @@ void some_function(void) {
 \starttyping
 	int sock;
 	struct sockaddr_ll rx_addr;
+	socklen_t addrlen = sizeof(src_addr);
 	char pkt_buf[2048];
 	struct ethhdr *eth_header;
 	struct ether_addr da;
@@ -93,7 +95,7 @@ void some_function(void) {
 	...
 
 	/* rx_addr - информация об отправителе кадра. */
-	recvfrom(sock, pkt_buf, sizeof(pkt_buf), 0, &rx_addr, sizeof(rx_addr));
+	recvfrom(sock, pkt_buf, sizeof(pkt_buf), 0, &rx_addr, &addrlen);
 
 	/* Игнорируем передаваемые кадры. */
 	if (rx_addr.sll_pkttype == PACKET_OUTGOING)
@@ -281,6 +283,9 @@ int main(int argc, char *argv[])
 
 \SlideTitle {Структура программного коммутатора}
 \IncludePicture[horizontal][diagrams/software-bridge.pdf]
+
+\SlideTitle {Алгоритм обработки кадра}
+\IncludePicture[horizontal][diagrams/frame-handling-algorithm.pdf]
 
 \SlideTitle {Протоколы ARP и ICMP}
 \startitemize
