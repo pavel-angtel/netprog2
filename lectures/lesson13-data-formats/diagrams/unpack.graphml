@@ -323,7 +323,7 @@ json_unpack(conf,
           <y:Geometry height="75.13014271999998" width="188.7709004799994" x="-624.9879726080044" y="-554.4903787249983"/>
           <y:Fill hasColor="false" transparent="false"/>
           <y:BorderStyle hasColor="false" raised="false" type="line" width="1.0"/>
-          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="84.4375" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#FF0000" verticalTextPosition="bottom" visible="true" width="185.8984375" x="1.4362314899997273" xml:space="preserve" y="-4.653678639999953">json_t *obj;
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="84.4375" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#FF0000" verticalTextPosition="bottom" visible="true" width="185.8984375" x="1.4362314899997273" xml:space="preserve" y="-4.6536786400000665">json_t *obj;
 json_unpack(conf,
                       "{s:{s:{s:o}}}",
                       "interfaces",
@@ -357,7 +357,7 @@ json_unpack(conf,
           <y:BorderStyle hasColor="false" raised="false" type="line" width="1.0"/>
           <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="84.4375" horizontalTextPosition="center" iconTextGap="4" modelName="custom" textColor="#FF0000" verticalTextPosition="bottom" visible="true" width="160.591796875" x="0.02618156249968706" xml:space="preserve" y="-3.465838640000129">int ena;
 json_unpack(conf,
-                     "{s:{s:{s:i}}}",
+                     "{s:{s:{s:b}}}",
                      "interfaces",
                      "eth1",
                      "enable", &amp;ena);<y:LabelModel><y:SmartNodeLabelModel distance="4.0"/></y:LabelModel><y:ModelParameter><y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/></y:ModelParameter></y:NodeLabel>
@@ -456,7 +456,6 @@ json_unpack(conf,
       </data>
     </edge>
     <edge id="e9" source="n25" target="n5">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="13.517029215997809" ty="3.134918490000018"/>
@@ -467,7 +466,6 @@ json_unpack(conf,
       </data>
     </edge>
     <edge id="e10" source="n26" target="n10">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="-58.06479159014723" sy="-19.82192695774936" tx="0.0" ty="0.0"/>
@@ -478,7 +476,6 @@ json_unpack(conf,
       </data>
     </edge>
     <edge id="e11" source="n28" target="n18">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="39.82663008833934" sy="-32.42745598413753" tx="-10.900341663986865" ty="-1.4874554400013835"/>
@@ -489,7 +486,6 @@ json_unpack(conf,
       </data>
     </edge>
     <edge id="e12" source="n27" target="n16">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="-89.95540086879203" sy="-31.858439126498297" tx="0.0" ty="0.0"/>
@@ -500,7 +496,6 @@ json_unpack(conf,
       </data>
     </edge>
     <edge id="e13" source="n29" target="n12">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>

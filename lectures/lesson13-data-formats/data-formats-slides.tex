@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 	jchild = json_object_get(jobj, "some-key");
 	json_object_del(jobj, "some-key");
 
-	json_decref(jstr);
+	json_decref(jobj);
 }
 \stoptyping
 
