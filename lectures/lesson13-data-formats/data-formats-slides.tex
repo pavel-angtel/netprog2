@@ -138,7 +138,7 @@ JSON. Примерно соответствует списку {\tt struct list_
 \item JSON обеспечивает сериализацию и десериализацию структурированных данных
 в сетевых протоколах, конфигурационных файлах и т.д.
 \item Самоописывающий формат - информация о структуре документа хранится в
-самом документе ({}, [] и пр.). Упрощает создание расширяемых протоколов с
+самом документе (\{\}, [] и пр.). Упрощает создание расширяемых протоколов с
 возможностью избирательной совместимости в каждой частной реализации.
 \item Свободная структура документа - определение множества допустимых
 документов возлагается на приложение. Для сравнения - в SQL это множество
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 		goto on_error;
 
 	/* char *json_dumps(const json_t *json, size_t flags); */
-	/* JSON_ENCODE_ANY - корневой жлемент не обязательно является объектом,
+	/* JSON_ENCODE_ANY - корневой элемент не обязательно является объектом,
 	 * JSON_INDENT - форматированный вывод с заданной шириной отступов. */
 	str = json_dumps(jconf, JSON_ENCODE_ANY | JSON_INDENT(3));
 	if (!str)
@@ -216,13 +216,13 @@ int main(int argc, char *argv[])
 
 	if (json_is_object(jdata))
 		/* Использование функций json_object_*. */
-	ellse if (json_is_array(jdata))
+	else if (json_is_array(jdata))
 		/* Использование функций json_array_*. */
-	ellse if (json_is_string(jdata))
+	else if (json_is_string(jdata))
 		/* Использование функций json_string_*. */
-	ellse if (json_is_integer(jdata))
+	else if (json_is_integer(jdata))
 		/* Использование функций json_integer_*. */
-	ellse if (json_is_boolean(jdata))
+	else if (json_is_boolean(jdata))
 		;
 }
 \stoptyping
@@ -306,12 +306,14 @@ int main(int argc, char *argv[])
 отсутствует в объекте.
 \item {\tt json_object_set()}  заменяет существующий дочерний элемент с
 указанным ключом и освобождает его. Для сравнения - {\tt avl_insert} возвращает
--1 при добавлении двух жлементов с одинаковыми ключами.
+-1 при добавлении двух элементов с одинаковыми ключами.
 \item {\tt json_object_del()} возвращает -1, если указанный ключ отсутствует в
 объекте.
+\item {\tt json_object_del()} автоматически вызывает {\tt json_decref()} для
+удаляемого элемента.
 \item {\tt json_decref} обычно (см. далее более точное правило) освобождает
 объект со всеми дочерними элементами. В отличие от {\tt struct avl_tree}
-перебор дочерних желементов не требуется.
+перебор дочерних элементов не требуется.
 \stopitemize
 
 \SlideTitle {Массивы}
@@ -460,7 +462,7 @@ int main(int argc, char *argv[])
 	/* Функция ворует ссылку. */
 	ret = json_object_set_new(jobj, "some-key", jchild);
 	if (ret < 0) {
-		/* Мы не смогли добавить jchild в объект. Надо ли его освобождать? Нет. */
+		/* Мы не добавили jchild в объект. Надо ли его освобождать? Нет. */
 		/* json_decref(jchild); */
 		goto on_error;
 	}
