@@ -1,0 +1,36 @@
+{
+   "network": {
+      "interfaces": {
+         "eth0": {
+            "state": {
+               "link-up": true,
+               "address-prefix": "192.168.0.5/28",
+               "used-by-process": [
+                  4864
+               ],
+               "traffic-mask": 2
+            }
+         },
+         "eth1": {
+            "state": {
+               "link-up": false,
+               "address-prefix": "192.168.1.10/22",
+               "used-by-process": [
+                  4864
+               ],
+               "traffic-mask": 3
+            }
+         },
+         "eth2": {
+            "state": {
+               "link-up": false,
+               "address-prefix": "192.168.2.11/27",
+               "used-by-process": [
+                  4864
+               ],
+               "traffic-mask": 0
+            }
+         }
+      }
+   }
+}

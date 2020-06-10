@@ -1,0 +1,61 @@
+{
+   "network": {
+      "interfaces": {
+         "eth0": {
+            "state": {
+               "link-up": true,
+               "address-prefix": "192.168.0.5/28",
+               "used-by-process": [
+                  4852,
+                  300
+               ],
+               "traffic-mask": 2
+            },
+            "enable": true,
+            "address": "192.168.0.5",
+            "prefix-length": "28",
+            "traffic-types": [
+               "multicast"
+            ],
+            "mtu": 1400
+         },
+         "eth1": {
+            "state": {
+               "link-up": false,
+               "address-prefix": "192.168.1.10/22",
+               "used-by-process": [
+                  4852
+               ],
+               "traffic-mask": 3
+            },
+            "enable": false,
+            "address": "192.168.1.10",
+            "prefix-length": 22,
+            "traffic-types": [
+               "unicast",
+               "multicast"
+            ],
+            "mtu": 1400
+         },
+         "eth2": {
+            "state": {
+               "link-up": false,
+               "address-prefix": "192.168.2.11/27",
+               "used-by-process": [
+                  4852,
+                  400,
+                  450
+               ],
+               "traffic-mask": 0
+            },
+            "enable": true,
+            "address": "192.168.2.11",
+            "prefix-length": "27",
+            "traffic-types": [],
+            "mtu": 1450
+         }
+      }
+   },
+   "time": {},
+   "users": {}
+}

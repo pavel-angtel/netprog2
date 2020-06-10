@@ -1,0 +1,238 @@
+
+#define _GNU_SOURCE
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+
+#include <libubox/utils.h>
+#include <libubox/avl.h>
+#include <libubox/avl-cmp.h>
+#include <jansson.h>
+
+struct iface_config {
+	int enable;
+	const char *address;
+	int prefix_len;
+
+#define TRAFFIC_UNICAST 0x1
+#define TRAFFIC_MULTICAST 0x2
+#define TRAFFIC_BROADCAST 0x4
+	unsigned int traffic_types;
+};
+
+struct iface_status {
+	int link_up;
+	char *address_prefix;
+	int used_by_process;
+	int traffic_mask;
+};
+
+struct iface {
+	char *name;
+	struct avl_node anode;
+
+	int carrier;
+
+	struct iface_config config;
+	struct iface_status status;
+};
+
+/* Функция перебирает все элементы src и проверяет наличие элемента с таким же
+ * путем в dest. Если в каком-то объекте src есть ключ, отсутствующий в dest,
+ * то элемент с таким ключом добавляется в dest. Если в src и dest есть массивы
+ * с одинаковыми путями, то все элементы массива в src добавляются в массив в
+ * dest. В всех остальных случаях dest не меняется. Пример объединенного
+ * документа см. в merged.json.
+ */
+static int merge_objects(json_t *dest, json_t *src)
+{
+
+	/* ... УСЛОЖНЕННАЯ ЗАДАЧА ... */
+
+	return 0;
+}
+
+/* Функция извлекает из документа @jconf конфигурацию для сетевых интерфейсов,
+ * имеющихся в словаре @ifaces_dict. Для каждого интерфейса функция заполняет
+ * все поля структуры iface_config значениями, полученными из документа.
+ * Необходимо учесть, что элемент документа prefix-length является
+ * опциональным. Если он присутствует, то он может иметь либо строковый, либо
+ * целочисленный тип. Если он отсутствует, от следует по умолчанию использовать
+ * значение 24. Используются макросы и функции json_unpack_ex(),
+ * json_object_foreach(), json_array_foreach(), avl_find_element(),
+ * json_string_value(), json_integer_value().
+ */
+static int parse_json_config(struct avl_tree *ifaces_dict, json_t *jconf)
+{
+
+	/* ... */
+
+	return 0;
+}
+
+/* Функция генерирует документ со статусом  всех интерфейсов в словаре
+ * @ifaces_dict. Значения полей документа заполняются данными из структуры
+ * iface_status. Пример документа см. в файле state.json. Созданный документ
+ * передается через выходной аргумент @jstatus. */
+static int generate_json_status(struct avl_tree *ifaces_dict, json_t **jstatus)
+{
+
+	/* ... */
+
+	return 0;
+}
+
+static int update_status(struct avl_tree *ifaces_dict)
+{
+	struct iface *iface;
+	int ret;
+
+	avl_for_each_element(ifaces_dict, iface, anode) {
+		struct iface_config *c = &iface->config;
+		struct iface_status *s = &iface->status;
+
+		s->link_up = iface->carrier && c->enable;
+		free(s->address_prefix);
+		ret = asprintf(&s->address_prefix,
+			       "%s/%d", c->address, c->prefix_len);
+		if (ret < 0)
+			return -1;
+		s->used_by_process = getpid();
+		s->traffic_mask = c->traffic_types;
+	}
+	return 0;
+}
+
+static void destroy_interfaces(struct avl_tree *ifaces_dict)
+{
+	struct iface *iface, *next_iface;
+
+	avl_for_each_element_safe(ifaces_dict, iface, anode, next_iface) {
+		avl_delete(ifaces_dict, &iface->anode);
+		free(iface->status.address_prefix);
+		free(iface->name);
+		free(iface);
+	}
+}
+
+static int create_interfaces(struct avl_tree *ifaces_dict)
+{
+	struct iface_template {
+		const char *name;
+		int carrier;
+	} templates[] = {
+		{
+			.name = "eth0",
+			.carrier = 1,
+		},
+		{
+			.name = "eth1",
+			.carrier = 1,
+		},
+		{
+			.name = "eth2",
+			.carrier = 0,
+		},
+	};
+	int i;
+	int ret;
+
+	for (i = 0; i < ARRAY_SIZE(templates); i++) {
+		struct iface_template *t = &templates[i];
+		struct iface *iface;
+
+		iface = calloc(1, sizeof(*iface));
+		if (!iface)
+			goto on_error;
+		iface->name = strdup(t->name);
+		if (!iface->name) {
+			free(iface);
+			goto on_error;
+		}
+		iface->anode.key = iface->name;
+		iface->carrier = t->carrier;
+
+		ret = avl_insert(ifaces_dict, &iface->anode);
+		if (ret < 0) {
+			fprintf(stderr, "Interface name collision\n");
+			free(iface->name);
+			free(iface);
+			goto on_error;
+		}
+	}
+	return 0;
+on_error:
+	destroy_interfaces(ifaces_dict);
+	return -1;
+}
+
+int main(int argc, char *argv[])
+{
+	struct avl_tree _ifaces_dict, *ifaces_dict = &_ifaces_dict;
+	json_t *jconf = NULL, *jstatus = NULL;
+	json_error_t jerr;
+	char *status_str;
+	int ret;
+
+	avl_init(ifaces_dict, avl_strcmp, false, NULL);
+
+	ret = create_interfaces(ifaces_dict);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to create interfaces\n");
+		goto on_error;
+	}
+
+	jconf = json_load_file("configuration.json", 0, &jerr);
+	if (!jconf) {
+		fprintf(stderr, "Failed to load configuration: %s (line %d)\n",
+				jerr.text, jerr.line);
+		goto on_error;
+	}
+
+	ret = parse_json_config(ifaces_dict, jconf);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to parse JSON config\n");
+		goto on_error;
+	}
+
+	ret = update_status(ifaces_dict);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to update status\n");
+		goto on_error;
+	}
+
+	ret = generate_json_status(ifaces_dict, &jstatus);
+	if (ret < 0) {
+		fprintf(stderr, "Failed to generate JSON status\n");
+		goto on_error;
+	}
+
+	{
+		ret = merge_objects(jstatus, jconf);
+		if (ret < 0) {
+			fprintf(stderr, "Failed to merge configuration "
+					"into status\n");
+			goto on_error;
+		}
+		json_decref(jconf);
+		jconf = NULL;
+	}
+	printf("Result:\n");
+	status_str = json_dumps(jstatus, JSON_ENCODE_ANY | JSON_INDENT(3));
+	if (!status_str)
+		goto on_error;
+	printf("%s\n", status_str);
+	free(status_str);
+	json_decref(jconf);
+	json_decref(jstatus);
+	destroy_interfaces(ifaces_dict);
+	return 0;
+on_error:
+	json_decref(jconf);
+	json_decref(jstatus);
+	destroy_interfaces(ifaces_dict);
+	return 1;
+}
